@@ -30,6 +30,9 @@ export class User extends BaseEntity {
   @Column({ name: 'refresh_token', nullable: true })
   refreshToken: string;
 
+  @Column({ name: 'access_token', nullable: true })
+  accessToken: string;
+
   @OneToMany(() => Workspace, (workspace) => workspace.owner)
   workspaces: Workspace[];
 
