@@ -41,4 +41,14 @@ export class AuthController {
       return res.status(400).json({ message: error.message });
     }
   }
+
+  static async refreshToken(req: Request, res: Response) {
+    try {
+      const { refreshToken } = req.body;
+      const token = await authService.refreshToken(refreshToken);
+      return res.status(200).json(token);
+    } catch (error) {
+      return res.status(400).json({ message: error.message });
+    }
+  }
 }

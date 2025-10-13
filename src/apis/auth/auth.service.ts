@@ -38,8 +38,42 @@ export class AuthService {
       process.env.JWT_SECRET,
       { expiresIn: '1h' }
     );
+
+    const refreshToken = jwt.sign(
+      { userId: user.id, email: user.email },
+      process.env.JWT_REFRESH_SECRET,
+      { expiresIn: '7d' }
+    );
     user.accessToken = accessToken;
+    user.refreshToken = refreshToken;
     await this.authRepository.save(user);
-    return { message: 'Login successful', accessToken };
+    return { message: 'Login successful', accessToken, refreshToken };
+  }
+
+  async refreshToken(oldRefreshToken: string) {
+    try {
+      const decoded = jwt.verify(
+        oldRefreshToken,
+        process.env.JWT_REFRESH_SECRET
+      ) as any;
+      const user = await this.authRepository.findOne({
+        where: { id: decoded.userId },
+      });
+
+      if (!user || user.refreshToken !== oldRefreshToken)
+        throw new Error('Invalid refresh token');
+
+      const newAccessToken = jwt.sign(
+        { userId: user.id, email: user.email },
+        process.env.JWT_SECRET,
+        { expiresIn: '1h' }
+      );
+      user.accessToken = newAccessToken;
+      await this.authRepository.save(user);
+
+      return { accessToken: newAccessToken };
+    } catch {
+      throw new Error('Refresh Token expired or invalid!');
+    }
   }
 }
