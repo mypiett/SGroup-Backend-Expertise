@@ -35,4 +35,6 @@ route.post('/register', AuthController.register);
  */
 route.post('/login', AuthController.login);
 
+route.post('/refreshToken', AuthController.refreshToken);
+
 export default route;
