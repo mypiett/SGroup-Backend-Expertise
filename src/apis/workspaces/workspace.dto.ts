@@ -8,3 +8,9 @@ export class createWorkspaceDto {
   @IsString()
   description?: string;
 }
+
+export interface UpdateWorkspaceDto {
+  name?: string;
+  description?: string;
+  isActive?: boolean;
+}
