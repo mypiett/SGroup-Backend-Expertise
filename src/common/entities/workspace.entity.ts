@@ -7,8 +7,8 @@ import {
   PrimaryGeneratedColumn,
 } from 'typeorm';
 import { BaseEntity } from '../../common/entities/base.entities';
-import { User } from '../users/user.entity';
-import { Board } from '../boards/board.entity';
+import { User } from './user.entity';
+import { Board } from '../../common/entities/board.entity';
 
 @Entity({ name: 'workspaces' })
 export class Workspace extends BaseEntity {

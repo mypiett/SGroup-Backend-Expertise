@@ -1,7 +1,7 @@
 import { AppDataSource } from '../../config/data-source';
-import { User } from '../users/user.entity';
+import { User } from '../../common/entities/user.entity';
 import { createWorkspaceDto, UpdateWorkspaceDto } from './workspace.dto';
-import { Workspace } from './workspace.entity';
+import { Workspace } from '../../common/entities/workspace.entity';
 
 export class WorkspaceService {
   private workspaceRepository = AppDataSource.getRepository(Workspace);
@@ -12,7 +12,11 @@ export class WorkspaceService {
     if (!owner) {
       throw new Error('User not found');
     }
-    const newWorkspace = this.workspaceRepository.create(data);
+    const newWorkspace = this.workspaceRepository.create({
+      ...data,
+      owner,
+      isDeleted: false,
+    });
     return await this.workspaceRepository.save(newWorkspace);
   }
 
