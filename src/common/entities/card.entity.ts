@@ -7,8 +7,8 @@ import {
   PrimaryGeneratedColumn,
 } from 'typeorm';
 import { BaseEntity } from '../../common/entities/base.entities';
-import { List } from '../lists/list.entity';
-import { Comment } from '../comments/comment.entity';
+import { List } from './list.entity';
+import { Comment } from './comment.entity';
 
 export enum Priority {
   HIGH = 'high',

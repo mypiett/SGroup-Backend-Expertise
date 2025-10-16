@@ -6,9 +6,9 @@ import {
   OneToMany,
   PrimaryGeneratedColumn,
 } from 'typeorm';
-import { BaseEntity } from '../../common/entities/base.entities';
-import { List } from '../lists/list.entity';
-import { Workspace } from '../workspaces/workspace.entity';
+import { BaseEntity } from './base.entities';
+import { List } from './list.entity';
+import { Workspace } from './workspace.entity';
 
 @Entity({ name: 'boards' })
 export class Board extends BaseEntity {
