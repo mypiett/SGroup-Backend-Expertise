@@ -6,8 +6,8 @@ import {
   OneToMany,
   PrimaryGeneratedColumn,
 } from 'typeorm';
-import { BaseEntity } from '../../common/entities/base.entities';
-import { Board } from '../boards/board.entity';
+import { BaseEntity } from './base.entities';
+import { Board } from './board.entity';
 import { Card } from '../cards/card.entity';
 
 @Entity({ name: 'lists' })

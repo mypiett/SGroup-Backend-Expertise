@@ -1,8 +1,16 @@
-import { Column, Entity, OneToMany, PrimaryGeneratedColumn } from 'typeorm';
-import { BaseEntity } from '../../common/entities/base.entities';
-import { Workspace } from '../workspaces/workspace.entity';
-import { Comment } from '../comments/comment.entity';
-import { Notification } from '../notifications/notification.entity';
+import {
+  Column,
+  Entity,
+  JoinTable,
+  ManyToMany,
+  OneToMany,
+  PrimaryGeneratedColumn,
+} from 'typeorm';
+import { BaseEntity } from './base.entities';
+import { Notification } from './notification.entity';
+import { Comment } from './comment.entity';
+import { Workspace } from './workspace.entity';
+import { Role } from './role.entity';
 
 @Entity({ name: 'users' })
 export class User extends BaseEntity {
@@ -41,4 +49,8 @@ export class User extends BaseEntity {
 
   @OneToMany(() => Notification, (notification) => notification.user)
   notifications: Notification[];
+
+  @ManyToMany(() => Role, (role) => role.users)
+  @JoinTable()
+  public role: Role[];
 }
