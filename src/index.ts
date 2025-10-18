@@ -3,13 +3,21 @@ import { setupSwagger } from './config/swagger';
 import * as dotenv from 'dotenv';
 import { AppDataSource } from './config/data-source';
 import AppRoute from './apis/index';
+import cors from 'cors';
+
 dotenv.config();
 
 const app = express();
 app.use(express.json());
 const PORT = Number(process.env.PORT);
+app.use(
+  cors({
+    origin: 'http://localhost:5173',
+  })
+);
+
 app.use('', AppRoute);
-// Connect database
+
 AppDataSource.initialize()
   .then(() => {
     console.log('Data Source has been initialized');
@@ -18,7 +26,6 @@ AppDataSource.initialize()
     console.log('Error during Data Source initialization', err);
   });
 
-// Swagger
 setupSwagger(app);
 
 app.listen(PORT, () => {
