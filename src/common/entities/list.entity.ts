@@ -8,7 +8,7 @@ import {
 } from 'typeorm';
 import { BaseEntity } from './base.entities';
 import { Board } from './board.entity';
-import { Card } from '../cards/card.entity';
+import { Card } from './card.entity';
 
 @Entity({ name: 'lists' })
 export class List extends BaseEntity {

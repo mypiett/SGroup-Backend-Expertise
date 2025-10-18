@@ -6,7 +6,7 @@ import {
   PrimaryGeneratedColumn,
 } from 'typeorm';
 import { BaseEntity } from './base.entities';
-import { Card } from '../cards/card.entity';
+import { Card } from './card.entity';
 import { User } from './user.entity';
 
 @Entity({ name: 'comments' })
