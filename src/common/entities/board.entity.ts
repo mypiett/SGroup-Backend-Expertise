@@ -18,7 +18,7 @@ export class Board extends BaseEntity {
   @Column()
   name: string;
 
-  @Column()
+  @Column({ nullable: true })
   description: string;
 
   @Column({ name: 'is_active', type: 'boolean', default: true })
@@ -26,6 +26,9 @@ export class Board extends BaseEntity {
 
   @Column({ name: 'cover_url', nullable: true })
   coverUrl: string;
+
+  @Column({ name: 'is_deleted', type: 'boolean', default: false })
+  isDeleted: boolean;
 
   @ManyToOne(() => Workspace, (workspace) => workspace.boards)
   @JoinColumn({ name: 'workspace_id' })

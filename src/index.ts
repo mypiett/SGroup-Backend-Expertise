@@ -4,6 +4,7 @@ import * as dotenv from 'dotenv';
 import { AppDataSource } from './config/data-source';
 import AppRoute from './apis/index';
 import cors from 'cors';
+import cookieParser from 'cookie-parser';
 
 dotenv.config();
 
@@ -13,9 +14,10 @@ const PORT = Number(process.env.PORT);
 app.use(
   cors({
     origin: 'http://localhost:5173',
+    credentials: true,
   })
 );
-
+app.use(cookieParser());
 app.use('', AppRoute);
 
 AppDataSource.initialize()

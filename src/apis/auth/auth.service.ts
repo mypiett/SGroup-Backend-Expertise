@@ -36,13 +36,13 @@ export class AuthService {
     const accessToken = jwt.sign(
       { userId: user.id, email: user.email },
       process.env.JWT_SECRET,
-      { expiresIn: '1h' }
+      { expiresIn: '1m' }
     );
 
     const refreshToken = jwt.sign(
       { userId: user.id, email: user.email },
       process.env.JWT_REFRESH_SECRET,
-      { expiresIn: '7d' }
+      { expiresIn: '5m' }
     );
     user.accessToken = accessToken;
     user.refreshToken = refreshToken;
@@ -66,7 +66,7 @@ export class AuthService {
       const newAccessToken = jwt.sign(
         { userId: user.id, email: user.email },
         process.env.JWT_SECRET,
-        { expiresIn: '1h' }
+        { expiresIn: '1m' }
       );
       user.accessToken = newAccessToken;
       await this.authRepository.save(user);
@@ -75,5 +75,15 @@ export class AuthService {
     } catch {
       throw new Error('Refresh Token expired or invalid!');
     }
+  }
+
+  async getMe(userId: number) {
+    const user = await this.authRepository.findOne({
+      where: { id: userId },
+      select: ['id', 'fullName', 'email'],
+    });
+
+    if (!user) throw new Error('User not found');
+    return user;
   }
 }

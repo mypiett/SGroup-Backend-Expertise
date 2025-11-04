@@ -37,4 +37,6 @@ route.post('/login', AuthController.login);
 
 route.post('/refreshToken', AuthController.refreshToken);
 
+route.get('/me', AuthController.getMe);
+
 export default route;
