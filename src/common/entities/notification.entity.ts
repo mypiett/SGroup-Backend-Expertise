@@ -1,37 +1,30 @@
-import {
-  Column,
-  Entity,
-  JoinColumn,
-  ManyToOne,
-  PrimaryGeneratedColumn,
-} from 'typeorm';
-import { BaseEntity } from '../../common/entities/base.entities';
+import { Column, Entity, ManyToOne, PrimaryGeneratedColumn } from 'typeorm';
+
+import { DateTimeEntity } from './base/dateTimeEntity';
 import { User } from './user.entity';
 
-export enum Type {
-  INFO = 'info',
-  WARNING = 'warning',
-  REMINDER = 'reminder',
-}
+@Entity('notifications')
+export class Notification extends DateTimeEntity {
+    @PrimaryGeneratedColumn('uuid')
+    public id: string;
 
-@Entity({ name: 'notifications' })
-export class Notification extends BaseEntity {
-  @PrimaryGeneratedColumn()
-  id: number;
+    @Column({ type: 'text' })
+    message: string;
 
-  @Column()
-  title: string;
+    @Column({
+        type: 'enum',
+        enum: ['info', 'warning', 'error'],
+        default: 'info',
+    })
+    type: string;
 
-  @Column('text')
-  message: string;
+    @Column({ type: 'json', nullable: true })
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    data: any;
 
-  @Column({ type: 'enum', enum: Type, nullable: true })
-  type: Type;
+    @Column({ name: 'isRead', type: 'boolean', default: false })
+    isRead: boolean;
 
-  @Column({ default: false })
-  isRead: boolean;
-
-  @ManyToOne(() => User, (user) => user.notifications)
-  @JoinColumn({ name: 'user_id' })
-  user: User;
+    @ManyToOne(() => User, (user) => user.notifications)
+    user: User;
 }

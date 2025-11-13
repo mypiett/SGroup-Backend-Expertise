@@ -1,30 +1,20 @@
-import {
-  Column,
-  Entity,
-  JoinColumn,
-  ManyToOne,
-  PrimaryGeneratedColumn,
-} from 'typeorm';
-import { BaseEntity } from './base.entities';
+import { Column, Entity, ManyToOne, PrimaryGeneratedColumn } from 'typeorm';
+
+import { DateTimeEntity } from './base/dateTimeEntity';
 import { Card } from './card.entity';
 import { User } from './user.entity';
 
-@Entity({ name: 'comments' })
-export class Comment extends BaseEntity {
-  @PrimaryGeneratedColumn()
-  id: number;
+@Entity('comments')
+export class Comment extends DateTimeEntity {
+    @PrimaryGeneratedColumn('uuid')
+    public id: string;
 
-  @Column()
-  content: string;
+    @Column({ type: 'text' })
+    content: string;
 
-  @Column({ name: 'parent_comment_id' })
-  parentCommentId: number;
+    @ManyToOne(() => Card, (card) => card.comments)
+    card: Card;
 
-  @ManyToOne(() => User, (user) => user.comments)
-  @JoinColumn({ name: 'user_id' })
-  user: User;
-
-  @ManyToOne(() => Card, (card) => card.comments)
-  @JoinColumn({ name: 'card_id' })
-  card: Card;
+    @ManyToOne(() => User, (user) => user.comments)
+    user: User;
 }

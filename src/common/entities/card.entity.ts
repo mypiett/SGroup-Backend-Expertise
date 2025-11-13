@@ -1,42 +1,49 @@
 import {
-  Column,
-  Entity,
-  JoinColumn,
-  ManyToOne,
-  OneToMany,
-  PrimaryGeneratedColumn,
+    Column,
+    Entity,
+    ManyToOne,
+    OneToMany,
+    PrimaryGeneratedColumn,
 } from 'typeorm';
-import { BaseEntity } from '../../common/entities/base.entities';
-import { List } from './list.entity';
+
+import { DateTimeEntity } from './base/dateTimeEntity';
+import { CardMembers } from './card-members.entity';
 import { Comment } from './comment.entity';
+import { List } from './list.entity';
 
-export enum Priority {
-  HIGH = 'high',
-  PREMIUM = 'premium',
-  LOW = 'low',
-}
+@Entity('cards')
+export class Card extends DateTimeEntity {
+    @PrimaryGeneratedColumn('uuid')
+    public id: string;
 
-@Entity({ name: 'cards' })
-export class Card extends BaseEntity {
-  @PrimaryGeneratedColumn()
-  id: number;
+    @Column({ type: 'varchar', length: 255 })
+    title: string;
 
-  @Column()
-  title: string;
+    @Column({ type: 'text', nullable: true })
+    description: string;
 
-  @Column({ type: 'float' })
-  position: number;
+    @Column({ type: 'int', default: 0 })
+    position: number;
 
-  @Column({ type: 'enum', enum: Priority, default: Priority.LOW })
-  priority: Priority;
+    @Column({ type: 'varchar', length: 255, nullable: true })
+    coverUrl: string;
 
-  @Column({ type: 'date', nullable: true })
-  dueDate: Date;
+    @Column({
+        type: 'enum',
+        enum: ['low', 'medium', 'high'],
+        default: 'medium',
+    })
+    priority: string;
 
-  @ManyToOne(() => List, (list) => list.cards)
-  @JoinColumn({ name: 'list_id' })
-  list: List;
+    @Column({ name: 'dueDate', type: 'date', nullable: true })
+    dueDate: Date;
 
-  @OneToMany(() => Comment, (comment) => comment.card)
-  comments: Comment[];
+    @ManyToOne(() => List, (list) => list.cards)
+    list: List;
+
+    @OneToMany(() => CardMembers, (cardMember) => cardMember.card)
+    public cardMembers: CardMembers[];
+
+    @OneToMany(() => Comment, (comment) => comment.user)
+    public comments: Comment[];
 }

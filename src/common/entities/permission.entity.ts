@@ -1,18 +1,22 @@
-import { Column, Entity, ManyToMany, PrimaryGeneratedColumn } from 'typeorm';
-import { Role } from './role.entity';
-import { BaseEntity } from './base.entities';
+import { Column, Entity, OneToMany, PrimaryGeneratedColumn } from 'typeorm';
+
+import { DateTimeEntity } from './base/dateTimeEntity';
+import { RolePermission } from './role-permission.entity';
 
 @Entity('permissions')
-export class Permission extends BaseEntity {
-  @PrimaryGeneratedColumn('uuid')
-  public id: string;
+export class Permission extends DateTimeEntity {
+    @PrimaryGeneratedColumn('uuid')
+    public id: string;
 
-  @Column({ type: 'varchar', unique: true, length: 100 })
-  public name: string;
+    @Column({ type: 'varchar', unique: true, length: 150 })
+    public name: string;
 
-  @Column({ type: 'text', nullable: true })
-  public description: string;
+    @Column({ type: 'text', nullable: true })
+    public description: string;
 
-  @ManyToMany(() => Role, (role) => role.permissions)
-  public roles: Role[];
+    @OneToMany(
+        () => RolePermission,
+        (rolePermission) => rolePermission.permission
+    )
+    public rolePermissions: RolePermission[];
 }

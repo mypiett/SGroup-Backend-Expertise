@@ -1,37 +1,53 @@
 import 'reflect-metadata';
 import { DataSource } from 'typeorm';
 import * as dotenv from 'dotenv';
+import { Board } from '@/common/entities/board.entity';
+import { BoardMembers } from '@/common/entities/board-member.entity';
+import { Card } from '@/common/entities/card.entity';
+import { CardMembers } from '@/common/entities/card-members.entity';
+import { Comment } from '@/common/entities/comment.entity';
+import { List } from '@/common/entities/list.entity';
+import { Notification } from '@/common/entities/notification.entity';
+import { Permission } from '@/common/entities/permission.entity';
+import { RefreshToken } from '@/common/entities/refresh-token.entity';
+import { Role } from '@/common/entities/role.entity';
+import { RolePermission } from '@/common/entities/role-permission.entity';
+import { User } from '@/common/entities/user.entity';
+import { Workspace } from '@/common/entities/workspace.entity';
+import { WorkspaceMembers } from '@/common/entities/workspace-member.entity';
+
 dotenv.config();
-import { User } from '../common/entities/user.entity';
-import { Board } from '../common/entities/board.entity';
-import { Comment } from '../common/entities/comment.entity';
-import { List } from '../common/entities/list.entity';
-import { Workspace } from '../common/entities/workspace.entity';
-import { Card } from '../common/entities/card.entity';
-import { Notification } from '../common/entities/notification.entity';
-import { Role } from '../common/entities/role.entity';
-import { Permission } from '../common/entities/permission.entity';
 
 export const AppDataSource = new DataSource({
   type: 'postgres',
-  host: process.env.DB_HOST,
-  port: Number(process.env.DB_PORT),
-  username: process.env.DB_USERNAME,
-  password: process.env.DB_PASSWORD,
-  database: process.env.DB_NAME,
+  host: process.env.DB_HOST || 'localhost',
+  port: Number(process.env.DB_PORT) || 5432,
+  username: process.env.DB_USER || 'postgres',
+  password: process.env.DB_PASSWORD || '123456',
+  database: process.env.DB_NAME || 'test_db',
   synchronize: true,
   logging: false,
   entities: [
     User,
     Workspace,
+    WorkspaceMembers,
     Board,
-    Card,
-    Comment,
     List,
+    Card,
+    CardMembers,
+    Comment,
     Notification,
+    RefreshToken,
     Role,
+    RolePermission,
     Permission,
+    BoardMembers,
   ],
-  migrations: [],
+  migrations: ['src/migration/**/*.ts'],
   subscribers: [],
+  ssl: process.env.DB_HOST?.includes('render.com')
+    ? {
+        rejectUnauthorized: false,
+      }
+    : false,
 });

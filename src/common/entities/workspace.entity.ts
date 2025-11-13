@@ -1,36 +1,29 @@
-import {
-  Column,
-  Entity,
-  JoinColumn,
-  ManyToOne,
-  OneToMany,
-  PrimaryGeneratedColumn,
-} from 'typeorm';
-import { BaseEntity } from '../../common/entities/base.entities';
-import { User } from './user.entity';
-import { Board } from '../../common/entities/board.entity';
+import { Column, Entity, OneToMany, PrimaryGeneratedColumn } from 'typeorm';
 
-@Entity({ name: 'workspaces' })
-export class Workspace extends BaseEntity {
-  @PrimaryGeneratedColumn()
-  id: number;
+import { DateTimeEntity } from './base/dateTimeEntity';
+import { Board } from './board.entity';
+import { WorkspaceMembers } from './workspace-member.entity';
 
-  @Column()
-  name: string;
+@Entity('workspaces')
+export class Workspace extends DateTimeEntity {
+    @PrimaryGeneratedColumn('uuid')
+    public id: string;
 
-  @Column()
-  description: string;
+    @Column({ type: 'varchar', length: 255 })
+    public title: string;
 
-  @Column({ name: 'is_deleted', type: 'boolean', default: false })
-  isDeleted: boolean;
+    @Column({ type: 'varchar', nullable: true })
+    public description: string;
 
-  @Column({ name: 'is_active', type: 'boolean', default: true })
-  isActive: boolean;
+    @Column({ type: 'enum', enum: ['private', 'public'], default: 'private' })
+    public visibility: 'private' | 'public';
 
-  @ManyToOne(() => User, (user) => user.workspaces)
-  @JoinColumn({ name: 'owner_id' })
-  owner: User;
+    @OneToMany(
+        () => WorkspaceMembers,
+        (workspaceMember) => workspaceMember.user
+    )
+    public workspaceMembers: WorkspaceMembers[];
 
-  @OneToMany(() => Board, (board) => board.workspace)
-  boards: Board[];
+    @OneToMany(() => Board, (board) => board.workspace)
+    boards: Board[];
 }

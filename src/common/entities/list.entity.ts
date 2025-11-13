@@ -1,30 +1,31 @@
 import {
-  Column,
-  Entity,
-  JoinColumn,
-  ManyToOne,
-  OneToMany,
-  PrimaryGeneratedColumn,
+    Column,
+    Entity,
+    JoinColumn,
+    ManyToOne,
+    OneToMany,
+    PrimaryGeneratedColumn,
 } from 'typeorm';
-import { BaseEntity } from './base.entities';
+
+import { DateTimeEntity } from './base/dateTimeEntity';
 import { Board } from './board.entity';
 import { Card } from './card.entity';
 
-@Entity({ name: 'lists' })
-export class List extends BaseEntity {
-  @PrimaryGeneratedColumn()
-  id: number;
+@Entity('lists')
+export class List extends DateTimeEntity {
+    @PrimaryGeneratedColumn('uuid')
+    public id: string;
 
-  @Column()
-  title: string;
+    @Column({ type: 'varchar', length: 255 })
+    title: string;
 
-  @Column({ type: 'float' })
-  position: number;
+    @Column({ type: 'int', default: 0 })
+    position: number;
 
-  @ManyToOne(() => Board, (board) => board.lists)
-  @JoinColumn({ name: 'board_id' })
-  board: Board;
+    @ManyToOne(() => Board, (board) => board.id, { onDelete: 'CASCADE' })
+    @JoinColumn({ name: 'boardId' })
+    public board: Board;
 
-  @OneToMany(() => Card, (card) => card.list)
-  cards: Card[];
+    @OneToMany(() => Card, (card) => card.list)
+    cards: Card[];
 }

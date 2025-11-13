@@ -1,39 +1,60 @@
 import {
-  Column,
-  Entity,
-  JoinColumn,
-  ManyToOne,
-  OneToMany,
-  PrimaryGeneratedColumn,
+    Column,
+    Entity,
+    JoinColumn,
+    ManyToOne,
+    OneToMany,
+    PrimaryGeneratedColumn,
 } from 'typeorm';
-import { BaseEntity } from './base.entities';
+
+import { DateTimeEntity } from './base/dateTimeEntity';
+import { BoardMembers } from './board-member.entity';
 import { List } from './list.entity';
 import { Workspace } from './workspace.entity';
 
-@Entity({ name: 'boards' })
-export class Board extends BaseEntity {
-  @PrimaryGeneratedColumn()
-  id: number;
+@Entity('boards')
+export class Board extends DateTimeEntity {
+    // id
+    @PrimaryGeneratedColumn('uuid')
+    public id: string;
 
-  @Column()
-  name: string;
+    // title
+    @Column({ type: 'varchar', length: 255 })
+    public title: string;
 
-  @Column({ nullable: true })
-  description: string;
+    // description
+    @Column({ type: 'text', nullable: true })
+    public description: string;
 
-  @Column({ name: 'is_active', type: 'boolean', default: true })
-  isActive: boolean;
+    // coverUrl
+    @Column({ type: 'varchar', length: 255, nullable: true })
+    public coverUrl: string;
 
-  @Column({ name: 'cover_url', nullable: true })
-  coverUrl: string;
+    // isClosed
+    @Column({ type: 'bool', nullable: false, default: false })
+    public isClosed: boolean;
 
-  @Column({ name: 'is_deleted', type: 'boolean', default: false })
-  isDeleted: boolean;
+    // visibility nằm trong ['private', 'public', 'workspace']
+    @Column({
+        type: 'enum',
+        enum: ['private', 'public', 'workspace'],
+        nullable: false,
+        default: 'private',
+    })
+    public visibility: string;
 
-  @ManyToOne(() => Workspace, (workspace) => workspace.boards)
-  @JoinColumn({ name: 'workspace_id' })
-  workspace: Workspace;
+    // workspace
+    @ManyToOne(() => Workspace, (workspace) => workspace.id, {
+        onDelete: 'CASCADE',
+    })
+    @JoinColumn({ name: 'workspaceId' })
+    public workspace: Workspace;
 
-  @OneToMany(() => List, (list) => list.board)
-  lists: List[];
+    // lists
+    @OneToMany(() => List, (list) => list.board)
+    lists: List[];
+
+    // boardMembers
+    @OneToMany(() => BoardMembers, (boardMember) => boardMember.board)
+    public boardMembers: BoardMembers[];
 }

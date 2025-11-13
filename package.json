@@ -10,7 +10,8 @@
     "start": "node dist/index.js",
     "lint": "eslint . --config eslint.config.ts --ext .ts",
     "prepare": "husky install",
-    "seed:auth": "ts-node ./src/scripts/run-seeder.ts"
+    "seed:auth": "ts-node ./src/scripts/run-seeder.ts",
+    "seed:rbac": "ts-node ./src/scripts/seed-rbac.ts"
   },
   "keywords": [],
   "author": "",
@@ -18,6 +19,7 @@
   "packageManager": "pnpm@10.17.0",
   "dependencies": {
     "bcrypt": "^6.0.0",
+    "bcryptjs": "^3.0.3",
     "class-validator": "^0.14.2",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",

@@ -1,56 +1,53 @@
-import {
-  Column,
-  Entity,
-  JoinTable,
-  ManyToMany,
-  OneToMany,
-  PrimaryGeneratedColumn,
-} from 'typeorm';
-import { BaseEntity } from './base.entities';
-import { Notification } from './notification.entity';
+import { Column, Entity, OneToMany, PrimaryGeneratedColumn } from 'typeorm';
+
+import { DateTimeEntity } from './base/dateTimeEntity';
+import { BoardMembers } from './board-member.entity';
+import { CardMembers } from './card-members.entity';
 import { Comment } from './comment.entity';
-import { Workspace } from './workspace.entity';
-import { Role } from './role.entity';
+import { Notification } from './notification.entity';
+import { WorkspaceMembers } from './workspace-member.entity';
 
-@Entity({ name: 'users' })
-export class User extends BaseEntity {
-  @PrimaryGeneratedColumn()
-  id: number;
+@Entity('users')
+export class User extends DateTimeEntity {
+    @PrimaryGeneratedColumn('uuid')
+    public id: string;
 
-  @Column({ name: 'full_name' })
-  fullName: string;
+    @Column({ type: 'varchar', unique: true, length: 255 })
+    public email: string;
 
-  @Column({ unique: true })
-  email: string;
+    @Column({ type: 'varchar', length: 255 })
+    public password: string;
 
-  @Column()
-  password: string;
+    @Column({ type: 'varchar', length: 100, nullable: true })
+    public name: string;
 
-  @Column({ name: 'avatar_url', nullable: true })
-  avatarUrl: string;
+    @Column({ type: 'text', nullable: true })
+    public bio: string;
 
-  @Column({ name: 'is_active', type: 'boolean', default: true })
-  isActive: boolean;
+    @Column({ type: 'varchar', length: 255, nullable: true })
+    public avatarUrl: string;
 
-  @Column({ name: 'is_deleted', type: 'boolean', default: false })
-  isDeleted: boolean;
+    @Column({ type: 'bool', nullable: false, default: false })
+    public isActive: boolean;
 
-  @Column({ name: 'refresh_token', nullable: true })
-  refreshToken: string;
+    @Column({ nullable: true })
+    public googleId: string;
 
-  @Column({ name: 'access_token', nullable: true })
-  accessToken: string;
+    @OneToMany(
+        () => WorkspaceMembers,
+        (workspaceMember) => workspaceMember.workspace
+    )
+    public workspaceMembers: WorkspaceMembers[];
 
-  @OneToMany(() => Workspace, (workspace) => workspace.owner)
-  workspaces: Workspace[];
+    @OneToMany(() => BoardMembers, (boardMember) => boardMember.user)
+    public boardMembers: BoardMembers[];
 
-  @OneToMany(() => Comment, (comment) => comment.user)
-  comments: Comment[];
+    @OneToMany(() => CardMembers, (cardMember) => cardMember.user)
+    public cardMembers: CardMembers[];
 
-  @OneToMany(() => Notification, (notification) => notification.user)
-  notifications: Notification[];
+    @OneToMany(() => Comment, (comment) => comment.user)
+    public comments: Comment[];
 
-  @ManyToMany(() => Role, (role) => role.users)
-  @JoinTable()
-  public role: Role[];
+    @OneToMany(() => Notification, (notification) => notification.user)
+    public notifications: Notification[];
 }
