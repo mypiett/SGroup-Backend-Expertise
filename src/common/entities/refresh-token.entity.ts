@@ -1,36 +1,36 @@
 import {
-    Column,
-    CreateDateColumn,
-    Entity,
-    PrimaryGeneratedColumn,
+  Column,
+  CreateDateColumn,
+  Entity,
+  PrimaryGeneratedColumn,
 } from 'typeorm';
 
 @Entity('refresh_tokens')
 export class RefreshToken {
-    @PrimaryGeneratedColumn('uuid')
-    public jti: string;
+  @PrimaryGeneratedColumn('uuid')
+  public jti: string;
 
-    @Column({ type: 'varchar', length: 255 })
-    public userId: string;
+  @Column({ type: 'varchar', length: 255 })
+  public userId: string;
 
-    @Column({ type: 'varchar', length: 255 })
-    public hash: string;
+  @Column({ type: 'varchar', length: 255 })
+  public hash: string;
 
-    @Column({ type: 'timestamp' })
-    public expiresAt: Date;
+  @Column({ type: 'timestamp' })
+  public expiresAt: Date;
 
-    @Column({ type: 'bool', default: false })
-    public revoked: boolean;
+  @Column({ type: 'bool', default: false })
+  public revoked: boolean;
 
-    @Column({ type: 'varchar', length: 255, nullable: true })
-    public replacedByJti?: string;
+  @Column({ type: 'varchar', length: 255, nullable: true })
+  public replacedByJti?: string;
 
-    @CreateDateColumn({ type: 'timestamp' })
-    public createdAt: Date;
+  @CreateDateColumn({ type: 'timestamp' })
+  public createdAt: Date;
 
-    @Column({ type: 'varchar', length: 500, nullable: true })
-    public userAgent?: string;
+  @Column({ type: 'varchar', length: 500, nullable: true })
+  public userAgent?: string;
 
-    @Column({ type: 'varchar', length: 45, nullable: true })
-    public ip?: string;
+  @Column({ type: 'varchar', length: 45, nullable: true })
+  public ip?: string;
 }

@@ -1,16 +1,24 @@
-import { IsNotEmpty, IsString } from 'class-validator';
+import { IsEnum, IsNotEmpty, IsOptional, IsString } from 'class-validator';
 
 export class createWorkspaceDto {
-  @IsString({ message: 'Name is required' })
+  @IsString({ message: 'Title is required' })
   @IsNotEmpty()
-  name: string;
+  title: string;
 
   @IsString()
+  @IsOptional()
   description?: string;
+
+  @IsEnum(['private', 'public'], {
+    message: 'Visibility must be private or public',
+  })
+  @IsOptional()
+  visibility?: 'private' | 'public';
 }
 
 export interface UpdateWorkspaceDto {
-  name?: string;
+  title?: string;
   description?: string;
-  isActive?: boolean;
+  visibility?: 'private' | 'public';
+  isArchived?: boolean;
 }

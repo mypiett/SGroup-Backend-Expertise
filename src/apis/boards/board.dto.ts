@@ -1,13 +1,15 @@
 export class CreateBoardDto {
-  name: string;
+  title: string;
   description?: string;
   coverUrl?: string;
-  workspaceId: number;
+  workspaceId: string; // UUID
+  visibility?: 'private' | 'public' | 'workspace';
 }
 
 export class UpdateBoardDto {
-  name?: string;
+  title?: string;
   description?: string;
   coverUrl?: string;
-  isActive?: boolean;
+  isClosed?: boolean;
+  visibility?: 'private' | 'public' | 'workspace';
 }

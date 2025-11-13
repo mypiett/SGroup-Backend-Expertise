@@ -8,6 +8,6 @@ import authenticateJWT from '../common/middleware/authentication';
 const route = Router();
 route.use('/users', authenticateJWT, UserRouter);
 route.use('/auth', AuthRouter);
-route.use('/workspace', authenticateJWT, WorkspaceRouter);
-route.use('/board', authenticateJWT, BoardRouter);
+route.use('/workspaces', authenticateJWT, WorkspaceRouter);
+route.use('/boards', authenticateJWT, BoardRouter);
 export default route;

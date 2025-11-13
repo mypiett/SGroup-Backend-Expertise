@@ -5,14 +5,14 @@ import { createWorkspaceDto, UpdateWorkspaceDto } from './workspace.dto';
 const workspaceService = new WorkspaceService();
 export class WorkspaceController {
   static async createWorkspace(req: Request, res: Response) {
-    const userId = Number((req as any).user?.id);
+    const userId = (req as any).user?.id;
     const data: createWorkspaceDto = req.body;
-    if (!data.name || data.name.trim() === '') {
-      throw new Error('Workspace name is required');
+    if (!data.title || data.title.trim() === '') {
+      throw new Error('Workspace title is required');
     }
     try {
       const result = await workspaceService.createWorkspace(userId, data);
-      return res.status(200).json(result);
+      return res.status(201).json(result);
     } catch (error) {
       return res.status(400).json({ message: error.message });
     }
@@ -29,7 +29,7 @@ export class WorkspaceController {
 
   static async getWorkspaceById(req: Request, res: Response) {
     try {
-      const id = Number(req.params.id);
+      const id = req.params.id;
       const workspace = await workspaceService.getWorkspaceById(id);
       return res.status(200).json(workspace);
     } catch (error) {
@@ -39,7 +39,7 @@ export class WorkspaceController {
 
   static async updateWorkspace(req: Request, res: Response) {
     try {
-      const id = Number(req.params.id);
+      const id = req.params.id;
       const data: UpdateWorkspaceDto = req.body;
 
       const updated = await workspaceService.updateWorkspace(id, data);
@@ -51,9 +51,19 @@ export class WorkspaceController {
 
   static async deleteWorkspace(req: Request, res: Response) {
     try {
-      const id = Number(req.params.id);
+      const id = req.params.id;
       const result = await workspaceService.deleteWorkspace(id);
       return res.status(200).json(result);
+    } catch (error) {
+      return res.status(400).json({ message: error.message });
+    }
+  }
+
+  static async getUserWorkspaces(req: Request, res: Response) {
+    try {
+      const userId = (req as any).user?.id;
+      const workspaces = await workspaceService.getWorkspacesByUserId(userId);
+      return res.status(200).json(workspaces);
     } catch (error) {
       return res.status(400).json({ message: error.message });
     }

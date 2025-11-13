@@ -18,7 +18,7 @@ const route = Router();
  *       500:
  *         description: Server Error
  */
-route.route('/').get(UserController.getAllUsers);
+route.route('/').get((req, res) => UserController.getAllUsers(req, res));
 
 /**
  * @swagger
@@ -43,7 +43,6 @@ route.route('/').get(UserController.getAllUsers);
  *       500:
  *         description: Server Error
  */
-route.route('/:id').get(UserController.getDetailUser)
-
+route.route('/:id').get((req, res) => UserController.getDetailUser(req, res));
 
 export default route;

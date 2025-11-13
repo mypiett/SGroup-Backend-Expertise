@@ -5,13 +5,13 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "dev": "ts-node-dev --respawn --transpile-only src/index.ts",
+    "dev": "ts-node-dev --respawn --transpile-only -r tsconfig-paths/register src/index.ts",
     "build": "tsc",
     "start": "node dist/index.js",
     "lint": "eslint . --config eslint.config.ts --ext .ts",
     "prepare": "husky install",
-    "seed:auth": "ts-node ./src/scripts/run-seeder.ts",
-    "seed:rbac": "ts-node ./src/scripts/seed-rbac.ts"
+    "seed:auth": "ts-node -r tsconfig-paths/register ./src/scripts/run-seeder.ts",
+    "seed:rbac": "ts-node -r tsconfig-paths/register ./src/scripts/seed-rbac.ts"
   },
   "keywords": [],
   "author": "",
@@ -54,6 +54,7 @@
     "lint-staged": "^16.1.6",
     "prettier": "^3.6.2",
     "ts-node-dev": "^2.0.0",
+    "tsconfig-paths": "^4.2.0",
     "tsx": "^4.20.5",
     "typescript": "^5.9.2",
     "typescript-eslint": "^8.44.0"

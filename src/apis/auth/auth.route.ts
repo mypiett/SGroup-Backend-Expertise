@@ -17,7 +17,7 @@ const route = Router();
  *       400:
  *         description: Validation error or email already exists
  */
-route.post('/register', AuthController.register);
+route.post('/register', (req, res) => AuthController.register(req, res));
 
 /**
  * @swagger
@@ -33,10 +33,14 @@ route.post('/register', AuthController.register);
  *       400:
  *         description: Invalid credentials
  */
-route.post('/login', AuthController.login);
+route.post('/login', (req, res) => AuthController.login(req, res));
 
-route.post('/refreshToken', AuthController.refreshToken);
+route.post('/refreshToken', (req, res) =>
+  AuthController.refreshToken(req, res)
+);
 
-route.get('/me', AuthController.getMe);
+route.get('/me', (req, res) => AuthController.getMe(req, res));
+
+route.post('/logout', (req, res) => AuthController.logout(req, res));
 
 export default route;

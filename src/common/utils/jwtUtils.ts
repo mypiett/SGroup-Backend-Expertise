@@ -9,7 +9,7 @@ const JWT_EXPIRES_IN: string | number =
   typeof process.env.JWT_EXPIRES_IN === 'string' &&
   process.env.JWT_EXPIRES_IN.length > 0
     ? process.env.JWT_EXPIRES_IN
-    : '1d';
+    : '30m';
 
 export const generateJwt = (payload: object) => {
   return jwt.sign(payload, JWT_SECRET, {

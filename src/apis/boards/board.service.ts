@@ -9,51 +9,104 @@ export class BoardService {
 
   async createBoard(data: CreateBoardDto) {
     const workspace = await this.workspaceRepository.findOne({
-      where: { id: data.workspaceId, isDeleted: false },
+      where: { id: data.workspaceId },
     });
+
     if (!workspace) throw new Error('Workspace not found');
 
     const board = this.boardRepository.create({
-      name: data.name,
-      description: data.description || '',
+      title: data.title,
+      description: data.description || null,
       coverUrl: data.coverUrl || null,
+      visibility: data.visibility || 'private',
+      isClosed: false,
       workspace,
-      isActive: true,
-      isDeleted: false,
     });
 
     return await this.boardRepository.save(board);
   }
 
-  async getBoards(workspaceId: number) {
+  async getBoards(workspaceId: string) {
     return await this.boardRepository.find({
       where: {
         workspace: { id: workspaceId },
-        isDeleted: false,
+        isClosed: false,
       },
       relations: ['workspace'],
+      select: {
+        id: true,
+        title: true,
+        description: true,
+        coverUrl: true,
+        visibility: true,
+        isClosed: true,
+        createdAt: true,
+        updatedAt: true,
+        workspace: {
+          id: true,
+          title: true,
+        },
+      },
     });
   }
 
-  async getBoardById(id: number) {
+  async getBoardById(id: string) {
     const board = await this.boardRepository.findOne({
-      where: { id, isDeleted: false },
-      relations: ['workspace', 'lists'],
+      where: { id },
+      relations: ['workspace', 'lists', 'boardMembers'],
+      select: {
+        id: true,
+        title: true,
+        description: true,
+        coverUrl: true,
+        visibility: true,
+        isClosed: true,
+        createdAt: true,
+        updatedAt: true,
+        workspace: {
+          id: true,
+          title: true,
+        },
+      },
     });
+
     if (!board) throw new Error('Board not found');
     return board;
   }
 
-  async updateBoard(id: number, data: UpdateBoardDto) {
-    const board = await this.getBoardById(id);
+  async updateBoard(id: string, data: UpdateBoardDto) {
+    const board = await this.boardRepository.findOne({
+      where: { id },
+    });
+
+    if (!board) throw new Error('Board not found');
+
     Object.assign(board, data);
 
     return await this.boardRepository.save(board);
   }
 
-  async deleteBoard(id: number) {
-    const board = await this.getBoardById(id);
-    board.isDeleted = true;
+  async deleteBoard(id: string) {
+    const board = await this.boardRepository.findOne({
+      where: { id },
+    });
+
+    if (!board) throw new Error('Board not found');
+
+    board.isClosed = true;
+
+    return await this.boardRepository.save(board);
+  }
+
+  async restoreBoard(id: string) {
+    const board = await this.boardRepository.findOne({
+      where: { id },
+    });
+
+    if (!board) throw new Error('Board not found');
+
+    board.isClosed = false;
+
     return await this.boardRepository.save(board);
   }
 }

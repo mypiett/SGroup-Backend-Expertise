@@ -1,46 +1,24 @@
 import { Router } from 'express';
 import { WorkspaceController } from './workspace.controller';
-import authentication from '../../common/middleware/authentication';
-import {
-  loadUserRoles,
-  requireRole,
-  requirePermission,
-  requireRoleAndPermission,
-  authorize,
-} from '../../common/middleware/authorization';
+
 const route = Router();
 
-route.use(authentication, loadUserRoles);
-
-route.post(
-  '/create',
-  requireRole('ADMIN'),
-  WorkspaceController.createWorkspace
+route.post('/create', (req, res) =>
+  WorkspaceController.createWorkspace(req, res)
 );
 
-route.get(
-  '/',
-  requirePermission('workspace:read'),
-  WorkspaceController.getAllWorkspaces
+route.get('/my-workspaces', (req, res) =>
+  WorkspaceController.getUserWorkspaces(req, res)
 );
 
-route.get(
-  '/:id',
-  authorize({
-    roles: ['ADMIN'],
-    permissions: ['workspace:read'],
-    allowOwnership: true,
-    ownershipField: 'userId',
-  }),
-  WorkspaceController.getWorkspaceById
-);
+route.get('/', (req, res) => WorkspaceController.getAllWorkspaces(req, res));
 
-route.put(
-  '/:id',
-  requireRoleAndPermission('ADMIN', 'workspace:update'),
-  WorkspaceController.updateWorkspace
-);
+route.get('/:id', (req, res) => WorkspaceController.getWorkspaceById(req, res));
 
-route.delete('/:id', requireRole('ADMIN'), WorkspaceController.deleteWorkspace);
+route.put('/:id', (req, res) => WorkspaceController.updateWorkspace(req, res));
+
+route.delete('/:id', (req, res) =>
+  WorkspaceController.deleteWorkspace(req, res)
+);
 
 export default route;
