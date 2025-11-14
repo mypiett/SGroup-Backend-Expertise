@@ -18,6 +18,7 @@
   "license": "ISC",
   "packageManager": "pnpm@10.17.0",
   "dependencies": {
+    "@asteasolutions/zod-to-openapi": "^8.1.0",
     "bcrypt": "^6.0.0",
     "bcryptjs": "^3.0.3",
     "class-validator": "^0.14.2",
@@ -25,12 +26,14 @@
     "cors": "^2.8.5",
     "dotenv": "^17.2.2",
     "express": "^5.1.0",
+    "http-status-codes": "^2.3.0",
     "jsonwebtoken": "^9.0.2",
     "pg": "^8.16.3",
     "reflect-metadata": "^0.2.2",
     "swagger-jsdoc": "^6.2.8",
     "swagger-ui-express": "^5.0.1",
-    "typeorm": "^0.3.27"
+    "typeorm": "^0.3.27",
+    "zod": "^4.1.12"
   },
   "devDependencies": {
     "@commitlint/cli": "^19.8.1",

@@ -6,7 +6,7 @@ import BoardRouter from './boards/board.route';
 import authenticateJWT from '../common/middleware/authentication';
 
 const route = Router();
-route.use('/users', authenticateJWT, UserRouter);
+route.use('/users', UserRouter);
 route.use('/auth', AuthRouter);
 route.use('/workspaces', authenticateJWT, WorkspaceRouter);
 route.use('/boards', authenticateJWT, BoardRouter);
