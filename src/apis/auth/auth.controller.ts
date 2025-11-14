@@ -3,6 +3,7 @@ import { LoginDto, RegisterDto } from './auth.dto';
 import { AuthService } from './auth.service';
 import { Request, Response } from 'express';
 import jwt from 'jsonwebtoken';
+import { redisClient } from '@/config/redisClient';
 
 const authService = new AuthService();
 
@@ -14,6 +15,13 @@ export class AuthController {
     }
     if (!validateEmail(data.email)) {
       return res.status(400).json({ message: 'Invalid email format' });
+    }
+
+    const checkedVerifyEmail = await redisClient.get(`verified:${data.email}`);
+    if (!checkedVerifyEmail) {
+      return res
+        .status(400)
+        .json({ message: 'Email has not been verified yet' });
     }
 
     if (data.password.length < 6) {

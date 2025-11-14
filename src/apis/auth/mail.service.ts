@@ -16,9 +16,15 @@ export class EmailService {
   }
 
   async sendVerificationEmail(email: string) {
+    const oldToken = await redisClient.get(`email:${email}`);
+    if (oldToken) {
+      await redisClient.del(`verify:${oldToken}`);
+    }
     const token = uuidv4();
     const ttl = 15 * 60;
-    await redisClient.set(`verify: ${token}`, email, { EX: ttl });
+    await redisClient.set(`verify:${token}`, email, { EX: ttl });
+    await redisClient.set(`email:${email}`, token, { EX: ttl });
+
     const link = `http://localhost:3000/auth/verify-email?token=${token}`;
     console.log(`[TEST] Verification link for ${email}: ${link}`);
 
@@ -31,9 +37,10 @@ export class EmailService {
   }
 
   async verifyEmailToken(token: string) {
-    const email = await redisClient.get(`verify: ${token}`);
+    const email = await redisClient.get(`verify:${token}`);
     if (!email) throw new Error('Invalid or expired token');
-    await redisClient.del(`verify: ${token}`);
+    await redisClient.del(`verify:${token}`);
+    await redisClient.set(`verified:${email}`, 'true');
     return email;
   }
 }
