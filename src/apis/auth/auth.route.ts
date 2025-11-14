@@ -1,8 +1,17 @@
 import { Router } from 'express';
 import { AuthController } from './auth.controller';
+import { EmailController } from './mail.controller';
 
 const route = Router();
+const authController = new AuthController();
+const emailController = new EmailController();
 
+route.post(
+  '/request-verify-email',
+  emailController.requestVerifyEmail.bind(emailController)
+);
+
+route.get('/verify-email', emailController.verifyEmail.bind(emailController));
 /**
  * @swagger
  * /api/auth/register:
@@ -17,7 +26,7 @@ const route = Router();
  *       400:
  *         description: Validation error or email already exists
  */
-route.post('/register', (req, res) => AuthController.register(req, res));
+route.post('/register', authController.register.bind(authController));
 
 /**
  * @swagger
@@ -33,14 +42,12 @@ route.post('/register', (req, res) => AuthController.register(req, res));
  *       400:
  *         description: Invalid credentials
  */
-route.post('/login', (req, res) => AuthController.login(req, res));
+route.post('/login', authController.login.bind(authController));
 
-route.post('/refreshToken', (req, res) =>
-  AuthController.refreshToken(req, res)
-);
+route.post('/refreshToken', authController.refreshToken.bind(authController));
 
-route.get('/me', (req, res) => AuthController.getMe(req, res));
+route.get('/me', authController.getMe.bind(authController));
 
-route.post('/logout', (req, res) => AuthController.logout(req, res));
+route.post('/logout', authController.logout.bind(authController));
 
 export default route;

@@ -1,3 +1,4 @@
+import { validateEmail } from '@/common/utils/validateEmail';
 import { LoginDto, RegisterDto } from './auth.dto';
 import { AuthService } from './auth.service';
 import { Request, Response } from 'express';
@@ -6,14 +7,12 @@ import jwt from 'jsonwebtoken';
 const authService = new AuthService();
 
 export class AuthController {
-  static async register(req: Request, res: Response) {
+  async register(req: Request, res: Response) {
     const data: RegisterDto = req.body;
     if (!data.name || !data.email || !data.password) {
       return res.status(400).json({ message: 'All fields are required' });
     }
-
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(data.email)) {
+    if (!validateEmail(data.email)) {
       return res.status(400).json({ message: 'Invalid email format' });
     }
 
@@ -31,7 +30,7 @@ export class AuthController {
     }
   }
 
-  static async login(req: Request, res: Response) {
+  async login(req: Request, res: Response) {
     const data: LoginDto = req.body;
     if (!data.email || !data.password) {
       return res.status(400).json({ message: 'All fields are required' });
@@ -59,7 +58,7 @@ export class AuthController {
     }
   }
 
-  static async refreshToken(req: Request, res: Response) {
+  async refreshToken(req: Request, res: Response) {
     try {
       const refreshToken = req.cookies.refreshToken;
 
@@ -74,7 +73,7 @@ export class AuthController {
     }
   }
 
-  static async getMe(req: Request, res: Response) {
+  async getMe(req: Request, res: Response) {
     try {
       const authHeader = req.headers.authorization;
       if (!authHeader) {
@@ -97,7 +96,7 @@ export class AuthController {
     }
   }
 
-  static async logout(req: Request, res: Response) {
+  async logout(req: Request, res: Response) {
     try {
       const refreshToken = req.cookies.refreshToken;
 
