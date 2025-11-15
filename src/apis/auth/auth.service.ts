@@ -6,14 +6,15 @@ import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import { generateJwt } from '../../common/utils/jwtUtils';
 import axios from 'axios';
+import { EmailService } from './mail.service';
+import { redisClient } from '@/config/redisClient';
 
-// nên chuyển login tạo refresh token vào utils/jwtUtils.ts
 const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || 'default-refresh';
 
 export class AuthService {
   private userRepository = AppDataSource.getRepository(User);
   private refreshTokenRepository = AppDataSource.getRepository(RefreshToken);
-
+  private emailService = new EmailService();
   async register(data: RegisterDto) {
     const existingEmail = await this.userRepository.findOne({
       where: { email: data.email },
@@ -171,6 +172,40 @@ export class AuthService {
     } catch {
       throw new Error('Refresh Token expired or invalid!');
     }
+  }
+
+  async forgetPassword(email: string) {
+    const user = await this.userRepository.findOne({
+      where: { email, isActive: true },
+    });
+    if (!user) throw new Error('User not found!');
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    const oldFotgetPasswordCode = await redisClient.get(
+      `forgetPassword:${email}`
+    );
+    if (oldFotgetPasswordCode) {
+      await redisClient.del(`forgetPassword:${oldFotgetPasswordCode}`);
+    }
+    await redisClient.set(`forgetPassword:${email}`, code, { EX: 15 * 60 });
+    await redisClient.set(`forgetPasswordCode:${code}`, email, { EX: 15 * 60 });
+    await this.emailService.sendForgotPasswordEmail(email, code);
+    return { message: 'Verification code sent to your email' };
+  }
+
+  async resetPassword(email: string, newPassword: string, code: string) {
+    const user = await this.userRepository.findOne({ where: { email } });
+    if (!user) throw new Error('User not found');
+    const savedCode = await redisClient.get(`forgetPassword:${email}`);
+    if (!savedCode) throw new Error('Code expired or invalid');
+    if (savedCode !== code) throw new Error('Invalid code');
+    const newHashedPassword = await bcrypt.hash(newPassword, 10);
+    if (await bcrypt.compare(newPassword, user.password)) {
+      throw new Error('New password must be different from the old password');
+    }
+    user.password = newHashedPassword;
+    await this.userRepository.save(user);
+    await redisClient.del(`forgetPassword:${email}`);
+    return { message: 'Reset password successfully' };
   }
 
   async getMe(userId: string) {

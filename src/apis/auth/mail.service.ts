@@ -43,4 +43,17 @@ export class EmailService {
     await redisClient.set(`verified:${email}`, 'true');
     return email;
   }
+
+  async sendForgotPasswordEmail(email: string, code: string) {
+    await this.transporter.sendMail({
+      to: email,
+      subject: 'Reset your password',
+      html: `
+        <h3>Password Reset Request</h3>
+        <p>Use the following code to reset your password. It is valid for 15 minutes:</p>
+        <h2 style="color: #333;">${code}</h2>
+        <p>If you did not request this, please ignore this email.</p>
+      `,
+    });
+  }
 }

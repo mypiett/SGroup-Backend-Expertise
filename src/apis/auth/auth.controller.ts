@@ -43,7 +43,9 @@ export class AuthController {
     if (!data.email || !data.password) {
       return res.status(400).json({ message: 'All fields are required' });
     }
-
+    if (!validateEmail(data.email)) {
+      return res.status(400).json({ message: 'Invalid email format' });
+    }
     try {
       const userAgent = req.headers['user-agent'];
       const ip = req.ip || req.socket.remoteAddress;
@@ -109,8 +111,50 @@ export class AuthController {
 
       const token = await authService.refreshToken(refreshToken);
       return res.status(200).json({ accessToken: token.accessToken });
-    } catch (error: any) {
+    } catch (error) {
       return res.status(401).json({ message: error.message });
+    }
+  }
+
+  async forgetPassword(req: Request, res: Response) {
+    const { email } = req.body;
+    if (!validateEmail(email)) {
+      return res.status(400).json({ message: 'Invalid email format' });
+    }
+    const lastSentRequestForgotPassword = await redisClient.get(
+      `lastSentRequestForgotPassword:${email}`
+    );
+    if (lastSentRequestForgotPassword) {
+      return res.status(429).json({
+        message:
+          'Too many requests. Please wait a few minutes before requesting again.',
+      });
+    }
+    try {
+      await authService.forgetPassword(email);
+      await redisClient.set(
+        `lastSentRequestForgotPassword:${email}`,
+        Date.now().toString(),
+        { EX: 60 }
+      );
+      return res.status(200).json({ message: 'Reset code sent to your email' });
+    } catch (error) {
+      return res.status(400).json({ message: error.message });
+    }
+  }
+
+  async resetPassword(req: Request, res: Response) {
+    const { email, code, newPassword } = req.body;
+    if (!validateEmail(email)) {
+      return res.status(400).json({ message: 'Invalid email format' });
+    }
+    try {
+      await authService.resetPassword(email, newPassword, code);
+      return res
+        .status(200)
+        .json({ message: 'Password has been reset successfully' });
+    } catch (error) {
+      return res.status(400).json({ message: error.message });
     }
   }
 

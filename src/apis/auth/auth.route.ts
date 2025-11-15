@@ -223,6 +223,119 @@ route.get(
   authController.oauthCallback.bind(authController)
 );
 
+/**
+ * @swagger
+ * /auth/forget-password:
+ *   post:
+ *     tags:
+ *       - Auth
+ *     summary: Request a password reset code
+ *     description: Send a one-time verification code to the user's email to reset password.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - email
+ *             properties:
+ *               email:
+ *                 type: string
+ *                 example: user@example.com
+ *     responses:
+ *       200:
+ *         description: Reset code sent to the email
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: Reset code sent to your email
+ *       400:
+ *         description: Invalid email format or user not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: Invalid email format
+ *       429:
+ *         description: Too many requests
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: Too many requests. Please wait a few minutes before requesting again.
+ */
+route.post(
+  '/forget-password',
+  authController.forgetPassword.bind(authController)
+);
+
+/**
+ * @swagger
+ * /auth/reset-password:
+ *   post:
+ *     tags:
+ *       - Auth
+ *     summary: Reset user password
+ *     description: Reset the password using the verification code sent to email.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - email
+ *               - code
+ *               - newPassword
+ *             properties:
+ *               email:
+ *                 type: string
+ *                 example: user@example.com
+ *               code:
+ *                 type: string
+ *                 example: "123456"
+ *               newPassword:
+ *                 type: string
+ *                 format: password
+ *                 example: "newStrongPassword123"
+ *     responses:
+ *       200:
+ *         description: Password reset successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: Password has been reset successfully
+ *       400:
+ *         description: Invalid code, expired code, or new password same as old
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: Invalid code
+ */
+route.post(
+  '/reset-password',
+  authController.resetPassword.bind(authController)
+);
+
 route.post('/refreshToken', authController.refreshToken.bind(authController));
 
 route.get('/me', authController.getMe.bind(authController));
