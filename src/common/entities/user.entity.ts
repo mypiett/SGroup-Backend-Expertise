@@ -15,7 +15,7 @@ export class User extends DateTimeEntity {
   @Column({ type: 'varchar', unique: true, length: 255 })
   public email: string;
 
-  @Column({ type: 'varchar', length: 255 })
+  @Column({ type: 'varchar', length: 255, nullable: true })
   public password: string;
 
   @Column({ type: 'varchar', length: 100, nullable: true })
@@ -32,6 +32,9 @@ export class User extends DateTimeEntity {
 
   @Column({ nullable: true })
   public googleId: string;
+
+  @Column({ type: 'varchar', length: 50, nullable: true, default: 'local' })
+  public provider: string;
 
   @OneToMany(
     () => WorkspaceMembers,

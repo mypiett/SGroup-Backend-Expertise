@@ -129,15 +129,99 @@ route.post('/register', authController.register.bind(authController));
  *   post:
  *     tags:
  *       - Auth
- *     summary: Login user
- *     description: Login with email and password
+ *     summary: Login user with email and password
+ *     description: Login using email and password, returns access token and sets refresh token cookie
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - email
+ *               - password
+ *             properties:
+ *               email:
+ *                 type: string
+ *                 example: user@example.com
+ *               password:
+ *                 type: string
+ *                 example: password123
  *     responses:
  *       200:
  *         description: Login successful
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: Login successful
+ *                 accessToken:
+ *                   type: string
+ *                   example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
  *       400:
- *         description: Invalid credentials
+ *         description: Invalid credentials or missing fields
  */
 route.post('/login', authController.login.bind(authController));
+
+/**
+ * @swagger
+ * /auth/google:
+ *   get:
+ *     tags:
+ *       - Auth
+ *     summary: Redirect to Google OAuth2 login
+ *     description: Redirects the user to Google's OAuth2 consent page
+ *     responses:
+ *       302:
+ *         description: Redirect to Google login page
+ */
+route.get('/google', authController.oauthRedirect.bind(authController));
+
+/**
+ * @swagger
+ * /auth/google/callback:
+ *   get:
+ *     tags:
+ *       - Auth
+ *     summary: Google OAuth2 callback
+ *     description: Handles Google OAuth2 callback, logs in user and returns access token
+ *     parameters:
+ *       - name: code
+ *         in: query
+ *         required: true
+ *         description: Authorization code returned by Google
+ *         schema:
+ *           type: string
+ *       - name: state
+ *         in: query
+ *         required: false
+ *         description: State parameter for CSRF protection
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Login successful via Google OAuth2
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: Login successful
+ *                 accessToken:
+ *                   type: string
+ *                   example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+ *       400:
+ *         description: Invalid code or failed login
+ */
+route.get(
+  '/google/callback',
+  authController.oauthCallback.bind(authController)
+);
 
 route.post('/refreshToken', authController.refreshToken.bind(authController));
 

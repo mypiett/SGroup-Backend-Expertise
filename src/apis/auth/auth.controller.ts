@@ -4,7 +4,7 @@ import { AuthService } from './auth.service';
 import { Request, Response } from 'express';
 import jwt from 'jsonwebtoken';
 import { redisClient } from '@/config/redisClient';
-
+import crypto from 'crypto';
 const authService = new AuthService();
 
 export class AuthController {
@@ -63,6 +63,39 @@ export class AuthController {
       });
     } catch (error: any) {
       return res.status(400).json({ message: error.message });
+    }
+  }
+
+  oauthRedirect(req: Request, res: Response) {
+    const state = crypto.randomBytes(16).toString('hex');
+    const redirectUri = process.env.GOOGLE_REDIRECT_URI;
+    const url = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${process.env.GOOGLE_CLIENT_ID}&redirect_uri=${redirectUri}&response_type=code&scope=email profile&state=${state}`;
+    res.redirect(url);
+  }
+
+  async oauthCallback(req: Request, res: Response) {
+    const code = req.query.code as string;
+    try {
+      const userAgent = req.headers['user-agent'];
+      const ip = req.ip || req.socket.remoteAddress;
+
+      const result = await authService.loginOAuth2(code, userAgent, ip);
+
+      res.cookie('refreshToken', result.refreshToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        maxAge: 7 * 24 * 60 * 60 * 1000,
+      });
+
+      return res.status(200).json({
+        message: 'Login successful',
+        accessToken: result.accessToken,
+      });
+    } catch (error) {
+      return res.status(400).json({
+        message: error.message,
+      });
     }
   }
 
