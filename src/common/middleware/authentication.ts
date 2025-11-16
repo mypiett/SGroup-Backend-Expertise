@@ -4,6 +4,7 @@ import { verifyJwt } from '../utils/jwtUtils';
 interface AuthenticatedRequest extends Request {
   user?: {
     userId: string;
+    email?: string;
     [key: string]: any;
   };
 }
@@ -14,9 +15,10 @@ const authenticateJWT = (
   next: NextFunction
 ) => {
   const authHeader = req.headers.authorization;
-  console.log('🚀 ~ authenticateJWT ~ authHeader:', authHeader);
+  console.log('🔐 [AUTH] Header:', authHeader);
 
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    console.warn('⚠️ [AUTH] Missing or malformed Authorization header');
     return res.status(401).json({ message: 'Access token required' });
   }
 
@@ -25,14 +27,20 @@ const authenticateJWT = (
   try {
     const decoded = verifyJwt(token);
 
-    if (!decoded || typeof decoded !== 'object') {
+    if (!decoded || typeof decoded !== 'object' || !decoded.userId) {
+      console.warn('⚠️ [AUTH] Invalid token payload:', decoded);
       return res.status(401).json({ message: 'Invalid token' });
     }
 
-    req.user = decoded as { userId: string; [key: string]: any };
+    req.user = {
+      userId: decoded.userId,
+      email: decoded.email,
+      ...decoded,
+    };
+
     next();
-  } catch (error) {
-    console.error('JWT verification failed:', error);
+  } catch (error: any) {
+    console.error('❌ [AUTH] JWT verification failed:', error.message);
     return res.status(401).json({ message: 'Invalid or expired token' });
   }
 };

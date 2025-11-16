@@ -10,7 +10,11 @@ dotenv.config();
 
 const app = express();
 app.use(express.json());
-const PORT = Number(process.env.PORT);
+
+const PORT = process.env.PORT && !isNaN(Number(process.env.PORT))
+  ? Number(process.env.PORT)
+  : 3000;
+
 app.use(
   cors({
     origin: 'http://localhost:5173',
@@ -18,7 +22,9 @@ app.use(
   })
 );
 app.use(cookieParser());
-app.use('', AppRoute);
+
+// ✅ Sửa tại đây
+app.use('/api', AppRoute);
 
 AppDataSource.initialize()
   .then(() => {
@@ -31,5 +37,6 @@ AppDataSource.initialize()
 setupSwagger(app);
 
 app.listen(PORT, () => {
-  console.log(`Server is running on http://localhost:${PORT}`);
+  console.log(`✅ Server is running on http://localhost:${PORT}`);
+  console.log(`📚 Swagger docs available at http://localhost:${PORT}/api/docs`);
 });

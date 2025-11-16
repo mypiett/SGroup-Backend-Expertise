@@ -1,8 +1,9 @@
 import { Router } from 'express';
 import { UserController } from './users.controller';
+import { uploadAvatar } from '../../common/middleware/upload.middleware';
+import authenticateJWT from '../../common/middleware/authentication';
 
 const route = Router();
-// const userController = new UserController();
 
 /**
  * @swagger
@@ -18,7 +19,8 @@ const route = Router();
  *       500:
  *         description: Server Error
  */
-route.route('/').get((req, res) => UserController.getAllUsers(req, res));
+route.get('/', authenticateJWT, (req, res) =>
+    UserController.getAllUsers(req, res));
 
 /**
  * @swagger
@@ -43,6 +45,75 @@ route.route('/').get((req, res) => UserController.getAllUsers(req, res));
  *       500:
  *         description: Server Error
  */
-route.route('/:id').get((req, res) => UserController.getDetailUser(req, res));
+route.get('/:id', authenticateJWT, (req, res) =>
+    UserController.getDetailUser(req, res));
+
+/**
+ * @swagger
+ * /api/users/{id}/profile:
+ *   put:
+ *     tags:
+ *       - Users
+ *     summary: Update user profile
+ *     description: Update personal information of a user
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               name:
+ *                 type: string
+ *               bio:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Profile updated successfully
+ *       400:
+ *         description: Bad request
+ */
+route.put('/:id/profile', authenticateJWT, (req, res) =>
+    UserController.updateProfile(req, res));
+
+/**
+ * @swagger
+ * /api/users/{id}/avatar:
+ *   post:
+ *     tags:
+ *       - Users
+ *     summary: Upload user avatar
+ *     description: Upload or change user avatar
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               avatar:
+ *                 type: string
+ *                 format: binary
+ *     responses:
+ *       200:
+ *         description: Avatar updated successfully
+ *       400:
+ *         description: Bad request
+ */
+route.post('/:id/avatar', authenticateJWT, uploadAvatar.single('avatar'), (req, res) =>
+    UserController.uploadAvatar(req, res)
+);
 
 export default route;

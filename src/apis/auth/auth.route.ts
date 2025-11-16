@@ -11,6 +11,26 @@ const route = Router();
  *       - Auth
  *     summary: Register a new user
  *     description: Create a new user account with fullName, email, and password
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               name:
+ *                 type: string
+ *                 example: ""
+ *               email:
+ *                 type: string
+ *                 example: ""
+ *               password:
+ *                 type: string
+ *                 example: ""
+ *             required:
+ *               - name
+ *               - email
+ *               - password
  *     responses:
  *       201:
  *         description: Register successfully
@@ -27,6 +47,22 @@ route.post('/register', (req, res) => AuthController.register(req, res));
  *       - Auth
  *     summary: Login user
  *     description: Login with email and password
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               email:
+ *                 type: string
+ *                 example: nguyenvana@example.com
+ *               password:
+ *                 type: string
+ *                 example: 12345678
+ *             required:
+ *               - email
+ *               - password
  *     responses:
  *       200:
  *         description: Login successful
