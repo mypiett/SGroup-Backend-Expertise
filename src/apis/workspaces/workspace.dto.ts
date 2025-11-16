@@ -1,4 +1,10 @@
-import { IsEnum, IsNotEmpty, IsOptional, IsString } from 'class-validator';
+import {
+  IsEnum,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  IsUUID,
+} from 'class-validator';
 
 export class createWorkspaceDto {
   @IsString({ message: 'Title is required' })
@@ -21,4 +27,20 @@ export interface UpdateWorkspaceDto {
   description?: string;
   visibility?: 'private' | 'public';
   isArchived?: boolean;
+}
+
+export class AddMemberDto {
+  @IsUUID('4', { message: 'User ID must be a valid UUID' })
+  @IsNotEmpty({ message: 'User ID is required' })
+  userId: string;
+
+  @IsUUID('4', { message: 'Role ID must be a valid UUID' })
+  @IsNotEmpty({ message: 'Role ID is required' })
+  roleId: string;
+}
+
+export class UpdateMemberRoleDto {
+  @IsUUID('4', { message: 'Role ID must be a valid UUID' })
+  @IsNotEmpty({ message: 'Role ID is required' })
+  roleId: string;
 }
