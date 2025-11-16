@@ -19,15 +19,18 @@ export class WorkspaceService {
   private roleRepository = AppDataSource.getRepository(Role);
 
   async createWorkspace(userId: string, data: createWorkspaceDto) {
-    const user = await this.userRepository.findOne({ where: { id: userId } });
+    // Tìm user và role song song vì không phụ thuộc vào nhau
+    const [user, adminRole] = await Promise.all([
+      this.userRepository.findOne({ where: { id: userId } }),
+      this.roleRepository.findOne({
+        where: { name: ROLES.WORKSPACE_ADMIN },
+      }),
+    ]);
+
     if (!user) {
       throw new Error('User not found');
     }
 
-    // Tìm role mặc định cho owner/admin của workspace
-    const adminRole = await this.roleRepository.findOne({
-      where: { name: ROLES.WORKSPACE_ADMIN },
-    });
     if (!adminRole) {
       throw new Error('Workspace admin role not found');
     }
@@ -80,7 +83,7 @@ export class WorkspaceService {
 
   async updateWorkspace(id: string, data: UpdateWorkspaceDto) {
     const workspace = await this.workspaceRepository.findOne({
-      where: { id },
+      where: { id, isArchived: false },
     });
     if (!workspace) throw new Error('Workspace not found');
 
@@ -100,45 +103,77 @@ export class WorkspaceService {
   }
 
   async getWorkspacesByUserId(userId: string) {
+    // Lấy tất cả workspace mà user là thành viên
     const workspaceMembers = await this.workspaceMemberRepository.find({
       where: { userId },
-      relations: ['workspace', 'role'],
+      relations: [
+        'workspace',
+        'workspace.workspaceMembers',
+        'workspace.workspaceMembers.user',
+        'workspace.workspaceMembers.role',
+        'workspace.boards',
+        'role',
+      ],
     });
 
+    // Lọc và format kết quả
     return workspaceMembers
       .filter((wm) => !wm.workspace.isArchived)
       .map((wm) => ({
-        ...wm.workspace,
-        role: wm.role,
+        id: wm.workspace.id,
+        title: wm.workspace.title,
+        description: wm.workspace.description,
+        visibility: wm.workspace.visibility,
+        isArchived: wm.workspace.isArchived,
+        createdAt: wm.workspace.createdAt,
+        updatedAt: wm.workspace.updatedAt,
+
+        myRole: wm.role,
+
+        boards: wm.workspace.boards || [],
+
+        members:
+          wm.workspace.workspaceMembers?.map((member) => ({
+            id: member.id,
+            userId: member.user?.id,
+            username: member.user?.name,
+            email: member.user?.email,
+            avatarUrl: member.user?.avatarUrl,
+            role: member.role,
+            joinedAt: member.createdAt,
+          })) || [],
       }));
   }
 
   // Archive workspace
   async archiveWorkspace(id: string, userId: string) {
-    const workspace = await this.workspaceRepository.findOne({
-      where: { id },
-    });
+    // Tìm workspace và member song song
+    const [workspace, member] = await Promise.all([
+      this.workspaceRepository.findOne({
+        where: { id },
+      }),
+      this.workspaceMemberRepository.findOne({
+        where: { workspaceId: id, userId },
+        relations: ['role'],
+      }),
+    ]);
 
     if (!workspace) {
       throw new Error('Workspace not found');
     }
 
-    // Check if user is member and has admin role
-    const member = await this.workspaceMemberRepository.findOne({
-      where: { workspaceId: id, userId },
-      relations: ['role'],
-    });
-
     if (!member) {
       throw new Error('You are not a member of this workspace');
     }
 
-    // Check if user has admin role
+    // Check if user has admin or moderator role
     if (
       member.role.name !== ROLES.WORKSPACE_ADMIN &&
-      member.role.name !== ROLES.ADMIN
+      member.role.name !== ROLES.WORKSPACE_MODERATOR
     ) {
-      throw new Error('Only workspace admin can archive workspace');
+      throw new Error(
+        'Only workspace admin or moderator can archive workspace'
+      );
     }
 
     workspace.isArchived = true;
@@ -149,30 +184,31 @@ export class WorkspaceService {
 
   // Reopen workspace
   async reopenWorkspace(id: string, userId: string) {
-    const workspace = await this.workspaceRepository.findOne({
-      where: { id },
-    });
+    // Tìm workspace và member song song
+    const [workspace, member] = await Promise.all([
+      this.workspaceRepository.findOne({
+        where: { id },
+      }),
+      this.workspaceMemberRepository.findOne({
+        where: { workspaceId: id, userId },
+        relations: ['role'],
+      }),
+    ]);
 
     if (!workspace) {
       throw new Error('Workspace not found');
     }
 
-    // Check if user is member and has admin role
-    const member = await this.workspaceMemberRepository.findOne({
-      where: { workspaceId: id, userId },
-      relations: ['role'],
-    });
-
     if (!member) {
       throw new Error('You are not a member of this workspace');
     }
 
-    // Check if user has admin role
+    // Check if user has admin or moderator role
     if (
       member.role.name !== ROLES.WORKSPACE_ADMIN &&
-      member.role.name !== ROLES.ADMIN
+      member.role.name !== ROLES.WORKSPACE_MODERATOR
     ) {
-      throw new Error('Only workspace admin can reopen workspace');
+      throw new Error('Only workspace admin or moderator can reopen workspace');
     }
 
     workspace.isArchived = false;
@@ -187,20 +223,30 @@ export class WorkspaceService {
     data: AddMemberDto,
     currentUserId: string
   ) {
-    // Check workspace exists
-    const workspace = await this.workspaceRepository.findOne({
-      where: { id: workspaceId },
-    });
+    // Check workspace, current user, new user, existing member và role song song
+    const [workspace, currentMember, user, existingMember, role] =
+      await Promise.all([
+        this.workspaceRepository.findOne({
+          where: { id: workspaceId, isArchived: false },
+        }),
+        this.workspaceMemberRepository.findOne({
+          where: { workspaceId, userId: currentUserId },
+          relations: ['role'],
+        }),
+        this.userRepository.findOne({
+          where: { id: data.userId },
+        }),
+        this.workspaceMemberRepository.findOne({
+          where: { workspaceId, userId: data.userId },
+        }),
+        this.roleRepository.findOne({
+          where: { id: data.roleId },
+        }),
+      ]);
 
     if (!workspace) {
       throw new Error('Workspace not found');
     }
-
-    // Check current user is admin
-    const currentMember = await this.workspaceMemberRepository.findOne({
-      where: { workspaceId, userId: currentUserId },
-      relations: ['role'],
-    });
 
     if (!currentMember) {
       throw new Error('You are not a member of this workspace');
@@ -208,33 +254,18 @@ export class WorkspaceService {
 
     if (
       currentMember.role.name !== ROLES.WORKSPACE_ADMIN &&
-      currentMember.role.name !== ROLES.ADMIN
+      currentMember.role.name !== ROLES.WORKSPACE_MODERATOR
     ) {
-      throw new Error('Only workspace admin can add members');
+      throw new Error('Only workspace admin or moderator can add members');
     }
-
-    // Check if user exists
-    const user = await this.userRepository.findOne({
-      where: { id: data.userId },
-    });
 
     if (!user) {
       throw new Error('User not found');
     }
 
-    // Check if user is already a member
-    const existingMember = await this.workspaceMemberRepository.findOne({
-      where: { workspaceId, userId: data.userId },
-    });
-
     if (existingMember) {
       throw new Error('User is already a member of this workspace');
     }
-
-    // Check if role exists
-    const role = await this.roleRepository.findOne({
-      where: { id: data.roleId },
-    });
 
     if (!role) {
       throw new Error('Role not found');
@@ -268,20 +299,27 @@ export class WorkspaceService {
     data: UpdateMemberRoleDto,
     currentUserId: string
   ) {
-    // Check workspace exists
-    const workspace = await this.workspaceRepository.findOne({
-      where: { id: workspaceId },
-    });
+    // Check workspace, current member, member to update và new role song song
+    const [workspace, currentMember, member, newRole] = await Promise.all([
+      this.workspaceRepository.findOne({
+        where: { id: workspaceId },
+      }),
+      this.workspaceMemberRepository.findOne({
+        where: { workspaceId, userId: currentUserId },
+        relations: ['role'],
+      }),
+      this.workspaceMemberRepository.findOne({
+        where: { id: memberId, workspaceId },
+        relations: ['user', 'role'],
+      }),
+      this.roleRepository.findOne({
+        where: { id: data.roleId },
+      }),
+    ]);
 
     if (!workspace) {
       throw new Error('Workspace not found');
     }
-
-    // Check current user is admin
-    const currentMember = await this.workspaceMemberRepository.findOne({
-      where: { workspaceId, userId: currentUserId },
-      relations: ['role'],
-    });
 
     if (!currentMember) {
       throw new Error('You are not a member of this workspace');
@@ -289,38 +327,61 @@ export class WorkspaceService {
 
     if (
       currentMember.role.name !== ROLES.WORKSPACE_ADMIN &&
-      currentMember.role.name !== ROLES.ADMIN
+      currentMember.role.name !== ROLES.WORKSPACE_MODERATOR
     ) {
-      throw new Error('Only workspace admin can update member roles');
+      throw new Error(
+        'Only workspace admin or moderator can update member roles'
+      );
     }
-
-    // Check if member exists
-    const member = await this.workspaceMemberRepository.findOne({
-      where: { id: memberId, workspaceId },
-      relations: ['user', 'role'],
-    });
 
     if (!member) {
       throw new Error('Member not found in this workspace');
     }
 
-    // Check if new role exists
-    const newRole = await this.roleRepository.findOne({
-      where: { id: data.roleId },
-    });
-
     if (!newRole) {
       throw new Error('Role not found');
     }
 
-    // Update member role
-    member.roleId = data.roleId;
-    await this.workspaceMemberRepository.save(member);
+    // Phải là role trong workspace level
+    if (
+      newRole.name !== ROLES.WORKSPACE_ADMIN &&
+      newRole.name !== ROLES.WORKSPACE_MEMBER &&
+      newRole.name !== ROLES.WORKSPACE_OBSERVER &&
+      newRole.name !== ROLES.WORKSPACE_MODERATOR
+    ) {
+      throw new Error('Invalid role for workspace member');
+    }
 
-    // Return updated member with relations
+    // Admin được hiểu là chủ sở hữu workspace, không thể thay đổi vai trò của họ
+    if (member.role.name === ROLES.WORKSPACE_ADMIN) {
+      throw new Error('Cannot change role of workspace admin');
+    }
+
+    if (member.roleId === newRole.id) {
+      throw new Error('Member already has this role');
+    }
+
+    // member.roleId = newId;
+    // await repo.save(member);
+
+    // Note: Chỗ này không dùng save được vì roleId là khóa ngoại, nên khi save  thì chỉ đổi id còn member.role vẫn là object cũ, cần phải reload
+    await this.workspaceMemberRepository
+      .createQueryBuilder()
+      .update()
+      .set({ roleId: data.roleId })
+      .where('id = :memberId', { memberId })
+      .execute();
+
+    // Fetch fresh from database to get updated relations
     const updatedMember = await this.workspaceMemberRepository.findOne({
       where: { id: memberId },
       relations: ['user', 'role', 'workspace'],
+    });
+
+    console.log('Updated member from database:', {
+      id: updatedMember?.id,
+      roleId: updatedMember?.roleId,
+      roleName: updatedMember?.role?.name,
     });
 
     return {
@@ -332,7 +393,7 @@ export class WorkspaceService {
   // Get workspace members
   async getWorkspaceMembers(workspaceId: string) {
     const workspace = await this.workspaceRepository.findOne({
-      where: { id: workspaceId },
+      where: { id: workspaceId, isArchived: false },
     });
 
     if (!workspace) {
@@ -353,20 +414,23 @@ export class WorkspaceService {
     memberId: string,
     currentUserId: string
   ) {
-    // Check workspace exists
-    const workspace = await this.workspaceRepository.findOne({
-      where: { id: workspaceId },
-    });
+    // Check workspace, current member và member to remove song song
+    const [workspace, currentMember, member] = await Promise.all([
+      this.workspaceRepository.findOne({
+        where: { id: workspaceId, isArchived: false },
+      }),
+      this.workspaceMemberRepository.findOne({
+        where: { workspaceId, userId: currentUserId },
+        relations: ['role'],
+      }),
+      this.workspaceMemberRepository.findOne({
+        where: { id: memberId, workspaceId },
+      }),
+    ]);
 
     if (!workspace) {
       throw new Error('Workspace not found');
     }
-
-    // Check current user is admin
-    const currentMember = await this.workspaceMemberRepository.findOne({
-      where: { workspaceId, userId: currentUserId },
-      relations: ['role'],
-    });
 
     if (!currentMember) {
       throw new Error('You are not a member of this workspace');
@@ -374,15 +438,10 @@ export class WorkspaceService {
 
     if (
       currentMember.role.name !== ROLES.WORKSPACE_ADMIN &&
-      currentMember.role.name !== ROLES.ADMIN
+      currentMember.role.name !== ROLES.WORKSPACE_MODERATOR
     ) {
-      throw new Error('Only workspace admin can remove members');
+      throw new Error('Only workspace admin or moderator can remove members');
     }
-
-    // Check if member exists
-    const member = await this.workspaceMemberRepository.findOne({
-      where: { id: memberId, workspaceId },
-    });
 
     if (!member) {
       throw new Error('Member not found in this workspace');

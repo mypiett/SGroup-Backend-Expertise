@@ -1,18 +1,7 @@
 import { NextFunction, Request, Response } from 'express';
 import { verifyJwt } from '../utils/jwtUtils';
 
-interface AuthenticatedRequest extends Request {
-  user?: {
-    userId: string;
-    [key: string]: any;
-  };
-}
-
-const authenticateJWT = (
-  req: AuthenticatedRequest,
-  res: Response,
-  next: NextFunction
-) => {
+const authenticateJWT = (req: Request, res: Response, next: NextFunction) => {
   const authHeader = req.headers.authorization;
   console.log('🚀 ~ authenticateJWT ~ authHeader:', authHeader);
 
@@ -29,7 +18,7 @@ const authenticateJWT = (
       return res.status(401).json({ message: 'Invalid token' });
     }
 
-    req.user = decoded as { userId: string; [key: string]: any };
+    req.user = decoded as { userId: string; email: string; [key: string]: any };
     next();
   } catch (error) {
     console.error('JWT verification failed:', error);

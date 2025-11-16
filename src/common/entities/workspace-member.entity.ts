@@ -1,6 +1,7 @@
 import {
   Column,
   Entity,
+  Index,
   JoinColumn,
   ManyToOne,
   PrimaryGeneratedColumn,
@@ -14,6 +15,10 @@ import { Workspace } from './workspace.entity';
 
 @Entity('workspace_members')
 @Unique(['userId', 'workspaceId'])
+@Index('IDX_workspace_member_userId', ['userId'])
+@Index('IDX_workspace_member_workspaceId', ['workspaceId'])
+@Index('IDX_workspace_member_roleId', ['roleId'])
+@Index('IDX_workspace_member_workspace_role', ['workspaceId', 'roleId'])
 export class WorkspaceMembers extends DateTimeEntity {
   @PrimaryGeneratedColumn('uuid')
   public id: string;

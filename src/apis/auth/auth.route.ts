@@ -21,12 +21,28 @@ route.post('/register', (req, res) => AuthController.register(req, res));
 
 /**
  * @swagger
- * /api/auth/login:
+ * /auth/login:
  *   post:
  *     tags:
  *       - Auth
  *     summary: Login user
  *     description: Login with email and password
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               email:
+ *                 type: string
+ *                 format: email
+ *               password:
+ *                 type: string
+ *                 format: password
+ *     example:
+ *       email: user@example.com
+ *       password: yourpassword
  *     responses:
  *       200:
  *         description: Login successful
