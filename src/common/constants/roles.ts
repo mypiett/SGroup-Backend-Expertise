@@ -9,6 +9,7 @@ export const ROLES = {
 
   // Workspace level
   WORKSPACE_ADMIN: 'workspace_admin',
+  WORKSPACE_MODERATOR: 'workspace_moderator',
   WORKSPACE_MEMBER: 'workspace_member',
   WORKSPACE_OBSERVER: 'workspace_observer',
 
@@ -36,6 +37,8 @@ export const ROLE_DESCRIPTIONS = {
   [ROLES.ADMIN]: 'System Administrator - Full access to all features',
   [ROLES.WORKSPACE_ADMIN]:
     'Workspace Administrator - Full access within workspace',
+  [ROLES.WORKSPACE_MODERATOR]:
+    'Workspace Moderator - Manage workspace content and members',
   [ROLES.WORKSPACE_MEMBER]:
     'Workspace Member - Standard access within workspace',
   [ROLES.WORKSPACE_OBSERVER]:
@@ -58,6 +61,7 @@ export const ROLE_HIERARCHY = {
   [ROLES.BOARD_OWNER]: 6,
   [ROLES.WORKSPACE_OBSERVER]: 3,
   [ROLES.WORKSPACE_MEMBER]: 4,
+  [ROLES.WORKSPACE_MODERATOR]: 5,
   [ROLES.WORKSPACE_ADMIN]: 7,
   [ROLES.ADMIN]: 10,
 } as const;
@@ -67,6 +71,7 @@ export const ROLE_GROUPS = {
   SYSTEM: [ROLES.ADMIN],
   WORKSPACE: [
     ROLES.WORKSPACE_ADMIN,
+    ROLES.WORKSPACE_MODERATOR,
     ROLES.WORKSPACE_MEMBER,
     ROLES.WORKSPACE_OBSERVER,
   ],
