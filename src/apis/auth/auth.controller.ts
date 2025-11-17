@@ -3,11 +3,12 @@ import { LoginDto, RegisterDto } from './auth.dto';
 import { AuthService } from './auth.service';
 import { Request, Response } from 'express';
 import jwt from 'jsonwebtoken';
-
+import { redisClient } from '@/config/redisClient';
+import crypto from 'crypto';
 const authService = new AuthService();
 
 export class AuthController {
-  static async register(req: Request, res: Response) {
+  async register(req: Request, res: Response) {
     const data: RegisterDto = req.body;
     console.log('📥 [REGISTER] Incoming data:', data);
 
@@ -18,6 +19,13 @@ export class AuthController {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(data.email)) {
       return res.status(400).json({ success: false, message: 'Invalid email format' });
+      }
+
+    const checkedVerifyEmail = await redisClient.get(`verified:${data.email}`);
+    if (!checkedVerifyEmail) {
+      return res
+        .status(400)
+        .json({ message: 'Email has not been verified yet' });
     }
 
     if (data.password.length < 6) {
@@ -46,14 +54,16 @@ export class AuthController {
     }
   }
 
-  static async login(req: Request, res: Response) {
+  async login(req: Request, res: Response) {
     const data: LoginDto = req.body;
     console.log('📥 [LOGIN] Incoming data:', data);
 
     if (!data.email || !data.password) {
       return res.status(400).json({ success: false, message: 'All fields are required' });
     }
-
+    if (!validateEmail(data.email)) {
+      return res.status(400).json({ message: 'Invalid email format' });
+    }
     try {
       const userAgent = req.headers['user-agent'];
       const ip = req.ip || req.socket.remoteAddress;
@@ -88,7 +98,40 @@ export class AuthController {
     }
   }
 
-  static async refreshToken(req: Request, res: Response) {
+  oauthRedirect(req: Request, res: Response) {
+    const state = crypto.randomBytes(16).toString('hex');
+    const redirectUri = process.env.GOOGLE_REDIRECT_URI;
+    const url = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${process.env.GOOGLE_CLIENT_ID}&redirect_uri=${redirectUri}&response_type=code&scope=email profile&state=${state}`;
+    res.redirect(url);
+  }
+
+  async oauthCallback(req: Request, res: Response) {
+    const code = req.query.code as string;
+    try {
+      const userAgent = req.headers['user-agent'];
+      const ip = req.ip || req.socket.remoteAddress;
+
+      const result = await authService.loginOAuth2(code, userAgent, ip);
+
+      res.cookie('refreshToken', result.refreshToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        maxAge: 7 * 24 * 60 * 60 * 1000,
+      });
+
+      return res.status(200).json({
+        message: 'Login successful',
+        accessToken: result.accessToken,
+      });
+    } catch (error) {
+      return res.status(400).json({
+        message: error.message,
+      });
+    }
+  }
+
+  async refreshToken(req: Request, res: Response) {
     try {
       const refreshToken = req.cookies.refreshToken;
       console.log('📥 [REFRESH] Token:', refreshToken);
@@ -107,7 +150,49 @@ export class AuthController {
     }
   }
 
-  static async getMe(req: Request, res: Response) {
+  async forgetPassword(req: Request, res: Response) {
+    const { email } = req.body;
+    if (!validateEmail(email)) {
+      return res.status(400).json({ message: 'Invalid email format' });
+    }
+    const lastSentRequestForgotPassword = await redisClient.get(
+      `lastSentRequestForgotPassword:${email}`
+    );
+    if (lastSentRequestForgotPassword) {
+      return res.status(429).json({
+        message:
+          'Too many requests. Please wait a few minutes before requesting again.',
+      });
+    }
+    try {
+      await authService.forgetPassword(email);
+      await redisClient.set(
+        `lastSentRequestForgotPassword:${email}`,
+        Date.now().toString(),
+        { EX: 60 }
+      );
+      return res.status(200).json({ message: 'Reset code sent to your email' });
+    } catch (error) {
+      return res.status(400).json({ message: error.message });
+    }
+  }
+
+  async resetPassword(req: Request, res: Response) {
+    const { email, code, newPassword } = req.body;
+    if (!validateEmail(email)) {
+      return res.status(400).json({ message: 'Invalid email format' });
+    }
+    try {
+      await authService.resetPassword(email, newPassword, code);
+      return res
+        .status(200)
+        .json({ message: 'Password has been reset successfully' });
+    } catch (error) {
+      return res.status(400).json({ message: error.message });
+    }
+  }
+
+  async getMe(req: Request, res: Response) {
     try {
       const authHeader = req.headers.authorization;
       console.log('📥 [GET ME] Auth header:', authHeader);
@@ -137,7 +222,7 @@ export class AuthController {
     }
   }
 
-  static async logout(req: Request, res: Response) {
+  async logout(req: Request, res: Response) {
     try {
       const refreshToken = req.cookies.refreshToken;
       console.log('📥 [LOGOUT] Token:', refreshToken);

@@ -1,71 +1,416 @@
-import { Request, Response } from 'express';
+import { Request } from 'express';
+import { StatusCodes } from 'http-status-codes';
 import { WorkspaceService } from './workspace.service';
-import { createWorkspaceDto, UpdateWorkspaceDto } from './workspace.dto';
+import {
+  createWorkspaceDto,
+  UpdateWorkspaceDto,
+  AddMemberDto,
+  UpdateMemberRoleDto,
+} from './workspace.dto';
+import {
+  ResponseStatus,
+  ServiceResponse,
+} from '@/common/models/serviceResponse';
 
 const workspaceService = new WorkspaceService();
 export class WorkspaceController {
-  static async createWorkspace(req: Request, res: Response) {
-    const userId = (req as any).user?.id;
+  static async createWorkspace(req: Request): Promise<ServiceResponse<any>> {
+    const userId = req.user?.userId;
     const data: createWorkspaceDto = req.body;
     if (!data.title || data.title.trim() === '') {
-      throw new Error('Workspace title is required');
+      return new ServiceResponse(
+        ResponseStatus.Failed,
+        'Workspace title is required',
+        null,
+        StatusCodes.BAD_REQUEST
+      );
     }
     try {
       const result = await workspaceService.createWorkspace(userId, data);
-      return res.status(201).json(result);
+      return new ServiceResponse(
+        ResponseStatus.Success,
+        'Workspace created successfully',
+        result,
+        StatusCodes.CREATED
+      );
     } catch (error) {
-      return res.status(400).json({ message: error.message });
+      return new ServiceResponse(
+        ResponseStatus.Failed,
+        error.message,
+        null,
+        StatusCodes.BAD_REQUEST
+      );
     }
   }
 
-  static async getAllWorkspaces(req: Request, res: Response) {
+  static async getAllWorkspaces(): Promise<ServiceResponse<any>> {
     try {
       const workspaces = await workspaceService.getAllWorkspaces();
-      return res.status(200).json(workspaces);
+      return new ServiceResponse(
+        ResponseStatus.Success,
+        'Workspaces retrieved successfully',
+        workspaces,
+        StatusCodes.OK
+      );
     } catch (error) {
-      return res.status(400).json({ message: error.message });
+      return new ServiceResponse(
+        ResponseStatus.Failed,
+        error.message,
+        null,
+        StatusCodes.BAD_REQUEST
+      );
     }
   }
 
-  static async getWorkspaceById(req: Request, res: Response) {
+  static async getWorkspaceById(req: Request): Promise<ServiceResponse<any>> {
     try {
       const id = req.params.id;
       const workspace = await workspaceService.getWorkspaceById(id);
-      return res.status(200).json(workspace);
+      return new ServiceResponse(
+        ResponseStatus.Success,
+        'Workspace retrieved successfully',
+        workspace,
+        StatusCodes.OK
+      );
     } catch (error) {
-      return res.status(404).json({ message: error.message });
+      return new ServiceResponse(
+        ResponseStatus.Failed,
+        error.message,
+        null,
+        StatusCodes.NOT_FOUND
+      );
     }
   }
 
-  static async updateWorkspace(req: Request, res: Response) {
+  static async updateWorkspace(req: Request): Promise<ServiceResponse<any>> {
     try {
       const id = req.params.id;
       const data: UpdateWorkspaceDto = req.body;
 
       const updated = await workspaceService.updateWorkspace(id, data);
-      return res.status(200).json(updated);
+      return new ServiceResponse(
+        ResponseStatus.Success,
+        'Workspace updated successfully',
+        updated,
+        StatusCodes.OK
+      );
     } catch (error) {
-      return res.status(400).json({ message: error.message });
+      return new ServiceResponse(
+        ResponseStatus.Failed,
+        error.message,
+        null,
+        StatusCodes.BAD_REQUEST
+      );
     }
   }
 
-  static async deleteWorkspace(req: Request, res: Response) {
+  static async deleteWorkspace(req: Request): Promise<ServiceResponse<any>> {
     try {
       const id = req.params.id;
       const result = await workspaceService.deleteWorkspace(id);
-      return res.status(200).json(result);
+      return new ServiceResponse(
+        ResponseStatus.Success,
+        result.message,
+        result,
+        StatusCodes.OK
+      );
     } catch (error) {
-      return res.status(400).json({ message: error.message });
+      return new ServiceResponse(
+        ResponseStatus.Failed,
+        error.message,
+        null,
+        StatusCodes.BAD_REQUEST
+      );
     }
   }
 
-  static async getUserWorkspaces(req: Request, res: Response) {
+  static async getUserWorkspaces(req: Request): Promise<ServiceResponse<any>> {
     try {
-      const userId = (req as any).user?.id;
+      const userId = req.user?.userId;
+      console.log('Fetching workspaces for user ID:', userId);
       const workspaces = await workspaceService.getWorkspacesByUserId(userId);
-      return res.status(200).json(workspaces);
+      return new ServiceResponse(
+        ResponseStatus.Success,
+        'User workspaces retrieved successfully',
+        workspaces,
+        StatusCodes.OK
+      );
     } catch (error) {
-      return res.status(400).json({ message: error.message });
+      return new ServiceResponse(
+        ResponseStatus.Failed,
+        error.message,
+        null,
+        StatusCodes.BAD_REQUEST
+      );
+    }
+  }
+
+  // Archive workspace
+  static async archiveWorkspace(req: Request): Promise<ServiceResponse<any>> {
+    try {
+      const id = req.params.id;
+      const userId = req.user?.userId;
+      const result = await workspaceService.archiveWorkspace(id, userId);
+      return new ServiceResponse(
+        ResponseStatus.Success,
+        result.message,
+        result,
+        StatusCodes.OK
+      );
+    } catch (error) {
+      if (error.message === 'Workspace not found') {
+        return new ServiceResponse(
+          ResponseStatus.Failed,
+          error.message,
+          null,
+          StatusCodes.NOT_FOUND
+        );
+      }
+      if (
+        error.message.includes('not a member') ||
+        error.message.includes('Only workspace admin')
+      ) {
+        return new ServiceResponse(
+          ResponseStatus.Failed,
+          error.message,
+          null,
+          StatusCodes.FORBIDDEN
+        );
+      }
+      return new ServiceResponse(
+        ResponseStatus.Failed,
+        error.message,
+        null,
+        StatusCodes.BAD_REQUEST
+      );
+    }
+  }
+
+  // Reopen workspace
+  static async reopenWorkspace(req: Request): Promise<ServiceResponse<any>> {
+    try {
+      const id = req.params.id;
+      const userId = req.user?.userId;
+      const result = await workspaceService.reopenWorkspace(id, userId);
+      return new ServiceResponse(
+        ResponseStatus.Success,
+        result.message,
+        result,
+        StatusCodes.OK
+      );
+    } catch (error) {
+      if (error.message === 'Workspace not found') {
+        return new ServiceResponse(
+          ResponseStatus.Failed,
+          error.message,
+          null,
+          StatusCodes.NOT_FOUND
+        );
+      }
+      if (
+        error.message.includes('not a member') ||
+        error.message.includes('Only workspace admin')
+      ) {
+        return new ServiceResponse(
+          ResponseStatus.Failed,
+          error.message,
+          null,
+          StatusCodes.FORBIDDEN
+        );
+      }
+      return new ServiceResponse(
+        ResponseStatus.Failed,
+        error.message,
+        null,
+        StatusCodes.BAD_REQUEST
+      );
+    }
+  }
+
+  // Add member to workspace
+  static async addMember(req: Request): Promise<ServiceResponse<any>> {
+    try {
+      const workspaceId = req.params.id;
+      const currentUserId = req.user?.userId;
+      const data: AddMemberDto = req.body;
+
+      const result = await workspaceService.addMember(
+        workspaceId,
+        data,
+        currentUserId
+      );
+      return new ServiceResponse(
+        ResponseStatus.Success,
+        result.message,
+        result,
+        StatusCodes.CREATED
+      );
+    } catch (error) {
+      if (
+        error.message === 'Workspace not found' ||
+        error.message === 'User not found' ||
+        error.message === 'Role not found'
+      ) {
+        return new ServiceResponse(
+          ResponseStatus.Failed,
+          error.message,
+          null,
+          StatusCodes.NOT_FOUND
+        );
+      }
+      if (
+        error.message.includes('not a member') ||
+        error.message.includes('Only workspace admin') ||
+        error.message.includes('already a member')
+      ) {
+        return new ServiceResponse(
+          ResponseStatus.Failed,
+          error.message,
+          null,
+          StatusCodes.FORBIDDEN
+        );
+      }
+      return new ServiceResponse(
+        ResponseStatus.Failed,
+        error.message,
+        null,
+        StatusCodes.BAD_REQUEST
+      );
+    }
+  }
+
+  // Update member role
+  static async updateMemberRole(req: Request): Promise<ServiceResponse<any>> {
+    try {
+      const workspaceId = req.params.id;
+      const memberId = req.params.memberId;
+      const currentUserId = req.user?.userId;
+      const data: UpdateMemberRoleDto = req.body;
+
+      const result = await workspaceService.updateMemberRole(
+        workspaceId,
+        memberId,
+        data,
+        currentUserId
+      );
+      return new ServiceResponse(
+        ResponseStatus.Success,
+        result.message,
+        result,
+        StatusCodes.OK
+      );
+    } catch (error) {
+      if (
+        error.message === 'Workspace not found' ||
+        error.message === 'Member not found in this workspace' ||
+        error.message === 'Role not found'
+      ) {
+        return new ServiceResponse(
+          ResponseStatus.Failed,
+          error.message,
+          null,
+          StatusCodes.NOT_FOUND
+        );
+      }
+      if (
+        error.message.includes('not a member') ||
+        error.message.includes('Only workspace admin')
+      ) {
+        return new ServiceResponse(
+          ResponseStatus.Failed,
+          error.message,
+          null,
+          StatusCodes.FORBIDDEN
+        );
+      }
+      return new ServiceResponse(
+        ResponseStatus.Failed,
+        error.message,
+        null,
+        StatusCodes.BAD_REQUEST
+      );
+    }
+  }
+
+  // Get workspace members
+  static async getWorkspaceMembers(
+    req: Request
+  ): Promise<ServiceResponse<any>> {
+    try {
+      const workspaceId = req.params.id;
+      const members = await workspaceService.getWorkspaceMembers(workspaceId);
+      return new ServiceResponse(
+        ResponseStatus.Success,
+        'Workspace members retrieved successfully',
+        members,
+        StatusCodes.OK
+      );
+    } catch (error) {
+      if (error.message === 'Workspace not found') {
+        return new ServiceResponse(
+          ResponseStatus.Failed,
+          error.message,
+          null,
+          StatusCodes.NOT_FOUND
+        );
+      }
+      return new ServiceResponse(
+        ResponseStatus.Failed,
+        error.message,
+        null,
+        StatusCodes.BAD_REQUEST
+      );
+    }
+  }
+
+  // Remove member
+  static async removeMember(req: Request): Promise<ServiceResponse<any>> {
+    try {
+      const workspaceId = req.params.id;
+      const memberId = req.params.memberId;
+      const currentUserId = req.user?.userId;
+
+      const result = await workspaceService.removeMember(
+        workspaceId,
+        memberId,
+        currentUserId
+      );
+      return new ServiceResponse(
+        ResponseStatus.Success,
+        result.message,
+        result,
+        StatusCodes.OK
+      );
+    } catch (error) {
+      if (
+        error.message === 'Workspace not found' ||
+        error.message === 'Member not found in this workspace'
+      ) {
+        return new ServiceResponse(
+          ResponseStatus.Failed,
+          error.message,
+          null,
+          StatusCodes.NOT_FOUND
+        );
+      }
+      if (
+        error.message.includes('not a member') ||
+        error.message.includes('Only workspace admin') ||
+        error.message.includes('Cannot remove the last admin')
+      ) {
+        return new ServiceResponse(
+          ResponseStatus.Failed,
+          error.message,
+          null,
+          StatusCodes.FORBIDDEN
+        );
+      }
+      return new ServiceResponse(
+        ResponseStatus.Failed,
+        error.message,
+        null,
+        StatusCodes.BAD_REQUEST
+      );
     }
   }
 }

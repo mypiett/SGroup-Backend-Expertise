@@ -6,16 +6,21 @@ import { LoginDto, RegisterDto } from './auth.dto';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import { generateJwt } from '../../common/utils/jwtUtils';
+<<<<<<< HEAD
 import { UserService } from "../users/user.service";
 const userService = new UserService();
+=======
+import axios from 'axios';
+import { EmailService } from './mail.service';
+import { redisClient } from '@/config/redisClient';
+>>>>>>> 205faa8be994ecb1adef2c596073d32ff28bde02
 
-// nên chuyển login tạo refresh token vào utils/jwtUtils.ts
 const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || 'default-refresh';
 
 export class AuthService {
   private userRepository = AppDataSource.getRepository(User);
   private refreshTokenRepository = AppDataSource.getRepository(RefreshToken);
-
+  private emailService = new EmailService();
   async register(data: RegisterDto) {
     const existingEmail = await this.userRepository.findOne({
       where: { email: data.email },
@@ -48,11 +53,10 @@ export class AuthService {
     const isPasswordValid = await bcrypt.compare(data.password, user.password);
     if (!isPasswordValid) throw new Error('Invalid password');
 
-    // Save refresh token to database first to get auto-generated UUID jti
     const refreshTokenEntity = this.refreshTokenRepository.create({
       userId: user.id,
-      hash: 'temporary', // Will be updated after JWT is created
-      expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
+      hash: 'temporary',
+      expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
       revoked: false,
       userAgent,
       ip,
@@ -60,7 +64,6 @@ export class AuthService {
 
     await this.refreshTokenRepository.save(refreshTokenEntity);
 
-    // Use the shared JWT utility to ensure consistent secret
     const accessToken = generateJwt({
       userId: user.id,
       email: user.email,
@@ -69,14 +72,74 @@ export class AuthService {
     const refreshTokenPayload = {
       userId: user.id,
       email: user.email,
-      jti: refreshTokenEntity.jti, // Use the auto-generated UUID
+      jti: refreshTokenEntity.jti,
+    };
+
+    const refreshToken = jwt.sign(refreshTokenPayload, JWT_REFRESH_SECRET, {
+      expiresIn: '7d',
+    });
+    const hashedRefreshToken = await bcrypt.hash(refreshToken, 10);
+    refreshTokenEntity.hash = hashedRefreshToken;
+    await this.refreshTokenRepository.save(refreshTokenEntity);
+
+    return { message: 'Login successful', accessToken, refreshToken };
+  }
+
+  async loginOAuth2(code: string, userAgent?: string, ip?: string) {
+    const tokenResponse = await axios.post(
+      'https://oauth2.googleapis.com/token',
+      {
+        code,
+        client_id: process.env.GOOGLE_CLIENT_ID,
+        client_secret: process.env.GOOGLE_CLIENT_SECRET,
+        redirect_uri: process.env.GOOGLE_REDIRECT_URI,
+        grant_type: 'authorization_code',
+      }
+    );
+    const profileResponse = await axios.get(
+      'https://www.googleapis.com/oauth2/v2/userinfo',
+      {
+        headers: { Authorization: `Bearer ${tokenResponse.data.access_token}` },
+      }
+    );
+
+    const { email, name, id: providerId } = profileResponse.data;
+    let user = await this.userRepository.findOne({ where: { email } });
+    if (!user)
+      user = await this.userRepository.save({
+        email,
+        name,
+        provider: 'google',
+        gooleId: providerId,
+        isActive: true,
+      });
+
+    const refreshTokenEntity = this.refreshTokenRepository.create({
+      userId: user.id,
+      hash: 'temporary',
+      expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+      revoked: false,
+      userAgent,
+      ip,
+    });
+
+    await this.refreshTokenRepository.save(refreshTokenEntity);
+
+    const accessToken = generateJwt({
+      userId: user.id,
+      email: user.email,
+    });
+
+    const refreshTokenPayload = {
+      userId: user.id,
+      email: user.email,
+      jti: refreshTokenEntity.jti,
     };
 
     const refreshToken = jwt.sign(refreshTokenPayload, JWT_REFRESH_SECRET, {
       expiresIn: '7d',
     });
 
-    // Update with actual hashed refresh token
     const hashedRefreshToken = await bcrypt.hash(refreshToken, 10);
     refreshTokenEntity.hash = hashedRefreshToken;
     await this.refreshTokenRepository.save(refreshTokenEntity);
@@ -106,7 +169,6 @@ export class AuthService {
 
       if (!user) throw new Error('User not found');
 
-      // Generate new access token using shared utility
       const newAccessToken = generateJwt({
         userId: user.id,
         email: user.email,
@@ -116,6 +178,40 @@ export class AuthService {
     } catch {
       throw new Error('Refresh Token expired or invalid!');
     }
+  }
+
+  async forgetPassword(email: string) {
+    const user = await this.userRepository.findOne({
+      where: { email, isActive: true },
+    });
+    if (!user) throw new Error('User not found!');
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    const oldFotgetPasswordCode = await redisClient.get(
+      `forgetPassword:${email}`
+    );
+    if (oldFotgetPasswordCode) {
+      await redisClient.del(`forgetPassword:${oldFotgetPasswordCode}`);
+    }
+    await redisClient.set(`forgetPassword:${email}`, code, { EX: 15 * 60 });
+    await redisClient.set(`forgetPasswordCode:${code}`, email, { EX: 15 * 60 });
+    await this.emailService.sendForgotPasswordEmail(email, code);
+    return { message: 'Verification code sent to your email' };
+  }
+
+  async resetPassword(email: string, newPassword: string, code: string) {
+    const user = await this.userRepository.findOne({ where: { email } });
+    if (!user) throw new Error('User not found');
+    const savedCode = await redisClient.get(`forgetPassword:${email}`);
+    if (!savedCode) throw new Error('Code expired or invalid');
+    if (savedCode !== code) throw new Error('Invalid code');
+    const newHashedPassword = await bcrypt.hash(newPassword, 10);
+    if (await bcrypt.compare(newPassword, user.password)) {
+      throw new Error('New password must be different from the old password');
+    }
+    user.password = newHashedPassword;
+    await this.userRepository.save(user);
+    await redisClient.del(`forgetPassword:${email}`);
+    return { message: 'Reset password successfully' };
   }
 
   async getMe(userId: string) {

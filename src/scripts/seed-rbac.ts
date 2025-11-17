@@ -2,6 +2,8 @@ import 'reflect-metadata';
 
 import bcrypt from 'bcryptjs';
 
+import { PERMISSIONS } from '@/common/constants/permissions';
+import { ROLES, ROLE_DESCRIPTIONS } from '@/common/constants/roles';
 import { Permission } from '@/common/entities/permission.entity';
 import { Role } from '@/common/entities/role.entity';
 import { RolePermission } from '@/common/entities/role-permission.entity';
@@ -24,186 +26,240 @@ export class AuthorizationSeeder {
       // Define permissions for Trello-like app
       const permissionsData = [
         // Board permissions
-        { name: 'boards:create', description: 'Create new boards' },
         {
-          name: 'boards:read',
+          name: PERMISSIONS.BOARDS_CREATE,
+          description: 'Create new boards',
+        },
+        {
+          name: PERMISSIONS.BOARDS_READ,
           description: 'View boards and their content',
         },
         {
-          name: 'boards:update',
+          name: PERMISSIONS.BOARDS_UPDATE,
           description: 'Edit board details and settings',
         },
-        { name: 'boards:delete', description: 'Delete boards' },
         {
-          name: 'boards:manage',
+          name: PERMISSIONS.BOARDS_DELETE,
+          description: 'Delete boards',
+        },
+        {
+          name: PERMISSIONS.BOARDS_MANAGE,
           description: 'Full board management including member management',
         },
 
         // List permissions
         {
-          name: 'lists:create',
+          name: PERMISSIONS.LISTS_CREATE,
           description: 'Create new lists in boards',
         },
-        { name: 'lists:read', description: 'View lists' },
         {
-          name: 'lists:update',
+          name: PERMISSIONS.LISTS_READ,
+          description: 'View lists',
+        },
+        {
+          name: PERMISSIONS.LISTS_UPDATE,
           description: 'Edit list details and reorder lists',
         },
-        { name: 'lists:delete', description: 'Delete lists' },
         {
-          name: 'lists:archive',
+          name: PERMISSIONS.LISTS_DELETE,
+          description: 'Delete lists',
+        },
+        {
+          name: PERMISSIONS.LISTS_ARCHIVE,
           description: 'Archive/unarchive lists',
         },
 
         // Card permissions
-        { name: 'cards:create', description: 'Create new cards' },
         {
-          name: 'cards:read',
+          name: PERMISSIONS.CARDS_CREATE,
+          description: 'Create new cards',
+        },
+        {
+          name: PERMISSIONS.CARDS_READ,
           description: 'View cards and their details',
         },
         {
-          name: 'cards:update',
+          name: PERMISSIONS.CARDS_UPDATE,
           description: 'Edit card content, due dates, labels',
         },
-        { name: 'cards:delete', description: 'Delete cards' },
         {
-          name: 'cards:assign',
+          name: PERMISSIONS.CARDS_DELETE,
+          description: 'Delete cards',
+        },
+        {
+          name: PERMISSIONS.CARDS_ASSIGN,
           description: 'Assign/unassign members to cards',
         },
         {
-          name: 'cards:move',
+          name: PERMISSIONS.CARDS_MOVE,
           description: 'Move cards between lists and boards',
         },
         {
-          name: 'cards:archive',
+          name: PERMISSIONS.CARDS_ARCHIVE,
           description: 'Archive/unarchive cards',
         },
 
         // Comment permissions
         {
-          name: 'comments:create',
+          name: PERMISSIONS.COMMENTS_CREATE,
           description: 'Add comments to cards',
         },
-        { name: 'comments:read', description: 'View comments' },
-        { name: 'comments:update', description: 'Edit own comments' },
-        { name: 'comments:delete', description: 'Delete own comments' },
         {
-          name: 'comments:moderate',
+          name: PERMISSIONS.COMMENTS_READ,
+          description: 'View comments',
+        },
+        {
+          name: PERMISSIONS.COMMENTS_UPDATE,
+          description: 'Edit own comments',
+        },
+        {
+          name: PERMISSIONS.COMMENTS_DELETE,
+          description: 'Delete own comments',
+        },
+        {
+          name: PERMISSIONS.COMMENTS_MODERATE,
           description: 'Delete any comments',
         },
 
         // Member permissions
         {
-          name: 'members:invite',
+          name: PERMISSIONS.MEMBERS_INVITE,
           description: 'Invite new members to boards',
         },
         {
-          name: 'members:remove',
+          name: PERMISSIONS.MEMBERS_REMOVE,
           description: 'Remove members from boards',
         },
-        { name: 'members:read', description: 'View board members' },
         {
-          name: 'members:manage',
+          name: PERMISSIONS.MEMBERS_READ,
+          description: 'View board members',
+        },
+        {
+          name: PERMISSIONS.MEMBERS_MANAGE,
           description: 'Manage member roles and permissions',
         },
 
         // Label permissions
-        { name: 'labels:create', description: 'Create new labels' },
-        { name: 'labels:read', description: 'View labels' },
         {
-          name: 'labels:update',
+          name: PERMISSIONS.LABELS_CREATE,
+          description: 'Create new labels',
+        },
+        {
+          name: PERMISSIONS.LABELS_READ,
+          description: 'View labels',
+        },
+        {
+          name: PERMISSIONS.LABELS_UPDATE,
           description: 'Edit label names and colors',
         },
-        { name: 'labels:delete', description: 'Delete labels' },
+        {
+          name: PERMISSIONS.LABELS_DELETE,
+          description: 'Delete labels',
+        },
 
         // Checklist permissions
         {
-          name: 'checklists:create',
+          name: PERMISSIONS.CHECKLISTS_CREATE,
           description: 'Create checklists in cards',
         },
-        { name: 'checklists:read', description: 'View checklists' },
         {
-          name: 'checklists:update',
+          name: PERMISSIONS.CHECKLISTS_READ,
+          description: 'View checklists',
+        },
+        {
+          name: PERMISSIONS.CHECKLISTS_UPDATE,
           description: 'Edit checklist items and mark as complete',
         },
-        { name: 'checklists:delete', description: 'Delete checklists' },
+        {
+          name: PERMISSIONS.CHECKLISTS_DELETE,
+          description: 'Delete checklists',
+        },
 
         // Attachment permissions
         {
-          name: 'attachments:create',
+          name: PERMISSIONS.ATTACHMENTS_CREATE,
           description: 'Upload attachments to cards',
         },
         {
-          name: 'attachments:read',
+          name: PERMISSIONS.ATTACHMENTS_READ,
           description: 'View and download attachments',
         },
         {
-          name: 'attachments:delete',
+          name: PERMISSIONS.ATTACHMENTS_DELETE,
           description: 'Delete attachments',
         },
 
         // Notification permissions
         {
-          name: 'notifications:read',
+          name: PERMISSIONS.NOTIFICATIONS_READ,
           description: 'View notifications',
         },
         {
-          name: 'notifications:manage',
+          name: PERMISSIONS.NOTIFICATIONS_MANAGE,
           description: 'Manage notification settings',
         },
 
         // Workspace/Organization permissions
         {
-          name: 'workspaces:create',
+          name: PERMISSIONS.WORKSPACES_CREATE,
           description: 'Create new workspaces',
         },
         {
-          name: 'workspaces:read',
+          name: PERMISSIONS.WORKSPACES_READ,
           description: 'View workspace details',
         },
         {
-          name: 'workspaces:update',
+          name: PERMISSIONS.WORKSPACES_UPDATE,
           description: 'Edit workspace settings',
         },
-        { name: 'workspaces:delete', description: 'Delete workspaces' },
         {
-          name: 'workspaces:manage',
+          name: PERMISSIONS.WORKSPACES_DELETE,
+          description: 'Delete workspaces',
+        },
+        {
+          name: PERMISSIONS.WORKSPACES_MANAGE,
           description: 'Full workspace administration',
         },
 
         // User management permissions
-        { name: 'users:read', description: 'View user profiles' },
-        { name: 'users:update', description: 'Edit own profile' },
         {
-          name: 'users:manage',
+          name: PERMISSIONS.USERS_READ,
+          description: 'View user profiles',
+        },
+        {
+          name: PERMISSIONS.USERS_UPDATE,
+          description: 'Edit own profile',
+        },
+        {
+          name: PERMISSIONS.USERS_MANAGE,
           description: 'Manage all users (admin only)',
         },
         {
-          name: 'users:delete',
+          name: PERMISSIONS.USERS_DELETE,
           description: 'Delete user accounts (admin only)',
         },
 
         // Report and analytics permissions
         {
-          name: 'reports:read',
+          name: PERMISSIONS.REPORTS_READ,
           description: 'View reports and analytics',
         },
         {
-          name: 'reports:export',
+          name: PERMISSIONS.REPORTS_EXPORT,
           description: 'Export reports and data',
         },
 
         // System administration
         {
-          name: 'system:admin',
+          name: PERMISSIONS.SYSTEM_ADMIN,
           description: 'Full system administration access',
         },
         {
-          name: 'system:backup',
+          name: PERMISSIONS.SYSTEM_BACKUP,
           description: 'Perform system backups',
         },
         {
-          name: 'system:maintenance',
+          name: PERMISSIONS.SYSTEM_MAINTENANCE,
           description: 'Perform system maintenance',
         },
       ];
@@ -232,13 +288,13 @@ export class AuthorizationSeeder {
       // Define roles with their permissions
       const rolesData = [
         {
-          name: 'admin',
-          description: 'System Administrator - Full access to all features',
+          name: ROLES.ADMIN,
+          description: ROLE_DESCRIPTIONS[ROLES.ADMIN],
           permissions: permissionsData.map((p) => p.name),
         },
         {
-          name: 'workspace_admin',
-          description: 'Workspace Administrator - Full access within workspace',
+          name: ROLES.WORKSPACE_ADMIN,
+          description: ROLE_DESCRIPTIONS[ROLES.WORKSPACE_ADMIN],
           permissions: permissionsData
             .filter(
               (p) =>
@@ -259,8 +315,30 @@ export class AuthorizationSeeder {
             .map((p) => p.name),
         },
         {
-          name: 'workspace_member',
-          description: 'Workspace Member - Standard access within workspace',
+          name: ROLES.WORKSPACE_MODERATOR,
+          description: ROLE_DESCRIPTIONS[ROLES.WORKSPACE_MODERATOR],
+          permissions: permissionsData
+            .filter(
+              (p) =>
+                p.name.includes('workspaces:') ||
+                p.name.includes('boards:') ||
+                p.name.includes('lists:') ||
+                p.name.includes('cards:') ||
+                p.name.includes('comments:') ||
+                p.name.includes('members:') ||
+                p.name.includes('labels:') ||
+                p.name.includes('checklists:') ||
+                p.name.includes('attachments:') ||
+                p.name.includes('notifications:') ||
+                p.name.includes('reports:read') ||
+                p.name.includes('users:read') ||
+                p.name.includes('users:update')
+            )
+            .map((p) => p.name),
+        },
+        {
+          name: ROLES.WORKSPACE_MEMBER,
+          description: ROLE_DESCRIPTIONS[ROLES.WORKSPACE_MEMBER],
           permissions: permissionsData
             .filter(
               (p) =>
@@ -269,16 +347,15 @@ export class AuthorizationSeeder {
             .map((p) => p.name),
         },
         {
-          name: 'workspace_observer',
-          description:
-            'Workspace Observer - View only access within workspace, can only read boards which they are a member of',
+          name: ROLES.WORKSPACE_OBSERVER,
+          description: ROLE_DESCRIPTIONS[ROLES.WORKSPACE_OBSERVER],
           permissions: permissionsData
             .filter((p) => p.name.includes('workspaces:read'))
             .map((p) => p.name),
         },
         {
-          name: 'board_owner',
-          description: 'Board Owner - Full access to owned boards',
+          name: ROLES.BOARD_OWNER,
+          description: ROLE_DESCRIPTIONS[ROLES.BOARD_OWNER],
           permissions: permissionsData
             .filter(
               (p) =>
@@ -297,19 +374,19 @@ export class AuthorizationSeeder {
             .map((p) => p.name),
         },
         {
-          name: 'board_admin',
-          description: 'Board Administrator - Manage board content and members',
+          name: ROLES.BOARD_ADMIN,
+          description: ROLE_DESCRIPTIONS[ROLES.BOARD_ADMIN],
           permissions: permissionsData
             .filter(
               (p) =>
-                p.name === 'boards:read' ||
-                p.name === 'boards:update' ||
+                p.name === PERMISSIONS.BOARDS_READ ||
+                p.name === PERMISSIONS.BOARDS_UPDATE ||
                 p.name.includes('lists:') ||
                 p.name.includes('cards:') ||
                 p.name.includes('comments:') ||
-                p.name === 'members:invite' ||
-                p.name === 'members:remove' ||
-                p.name === 'members:read' ||
+                p.name === PERMISSIONS.MEMBERS_INVITE ||
+                p.name === PERMISSIONS.MEMBERS_REMOVE ||
+                p.name === PERMISSIONS.MEMBERS_READ ||
                 p.name.includes('labels:') ||
                 p.name.includes('checklists:') ||
                 p.name.includes('attachments:') ||
@@ -320,23 +397,23 @@ export class AuthorizationSeeder {
             .map((p) => p.name),
         },
         {
-          name: 'board_member',
-          description: 'Board Member - Create and edit content',
+          name: ROLES.BOARD_MEMBER,
+          description: ROLE_DESCRIPTIONS[ROLES.BOARD_MEMBER],
           permissions: permissionsData
             .filter(
               (p) =>
-                p.name === 'boards:read' ||
-                p.name === 'lists:read' ||
-                p.name === 'lists:create' ||
-                p.name === 'lists:update' ||
+                p.name === PERMISSIONS.BOARDS_READ ||
+                p.name === PERMISSIONS.LISTS_READ ||
+                p.name === PERMISSIONS.LISTS_CREATE ||
+                p.name === PERMISSIONS.LISTS_UPDATE ||
                 p.name.includes('cards:') ||
-                p.name === 'comments:create' ||
-                p.name === 'comments:read' ||
-                p.name === 'comments:update' ||
-                p.name === 'comments:delete' ||
-                p.name === 'members:read' ||
-                p.name === 'labels:read' ||
-                p.name === 'labels:create' ||
+                p.name === PERMISSIONS.COMMENTS_CREATE ||
+                p.name === PERMISSIONS.COMMENTS_READ ||
+                p.name === PERMISSIONS.COMMENTS_UPDATE ||
+                p.name === PERMISSIONS.COMMENTS_DELETE ||
+                p.name === PERMISSIONS.MEMBERS_READ ||
+                p.name === PERMISSIONS.LABELS_READ ||
+                p.name === PERMISSIONS.LABELS_CREATE ||
                 p.name.includes('checklists:') ||
                 p.name.includes('attachments:') ||
                 p.name.includes('notifications:') ||
@@ -346,57 +423,22 @@ export class AuthorizationSeeder {
             .map((p) => p.name),
         },
         {
-          name: 'board_observer',
-          description: 'Board Observer - View only access',
+          name: ROLES.BOARD_OBSERVER,
+          description: ROLE_DESCRIPTIONS[ROLES.BOARD_OBSERVER],
           permissions: permissionsData
             .filter(
               (p) =>
-                p.name === 'boards:read' ||
-                p.name === 'lists:read' ||
-                p.name === 'cards:read' ||
-                p.name === 'comments:read' ||
-                p.name === 'members:read' ||
-                p.name === 'labels:read' ||
-                p.name === 'checklists:read' ||
-                p.name === 'attachments:read' ||
-                p.name === 'notifications:read' ||
-                p.name === 'users:read' ||
-                p.name === 'users:update'
-            )
-            .map((p) => p.name),
-        },
-        {
-          name: 'user',
-          description: 'Regular User - Basic user capabilities',
-          permissions: permissionsData
-            .filter(
-              (p) =>
-                p.name === 'boards:create' ||
-                p.name === 'boards:read' ||
-                p.name === 'workspaces:create' ||
-                p.name === 'workspaces:read' ||
-                p.name === 'users:read' ||
-                p.name === 'users:update' ||
-                p.name === 'notifications:read' ||
-                p.name === 'notifications:manage'
-            )
-            .map((p) => p.name),
-        },
-        {
-          name: 'guest',
-          description: 'Guest User - Limited access to specific boards',
-          permissions: permissionsData
-            .filter(
-              (p) =>
-                p.name === 'boards:read' ||
-                p.name === 'lists:read' ||
-                p.name === 'cards:read' ||
-                p.name === 'comments:read' ||
-                p.name === 'members:read' ||
-                p.name === 'labels:read' ||
-                p.name === 'checklists:read' ||
-                p.name === 'attachments:read' ||
-                p.name === 'users:read'
+                p.name === PERMISSIONS.BOARDS_READ ||
+                p.name === PERMISSIONS.LISTS_READ ||
+                p.name === PERMISSIONS.CARDS_READ ||
+                p.name === PERMISSIONS.COMMENTS_READ ||
+                p.name === PERMISSIONS.MEMBERS_READ ||
+                p.name === PERMISSIONS.LABELS_READ ||
+                p.name === PERMISSIONS.CHECKLISTS_READ ||
+                p.name === PERMISSIONS.ATTACHMENTS_READ ||
+                p.name === PERMISSIONS.NOTIFICATIONS_READ ||
+                p.name === PERMISSIONS.USERS_READ ||
+                p.name === PERMISSIONS.USERS_UPDATE
             )
             .map((p) => p.name),
         },
@@ -456,7 +498,7 @@ export class AuthorizationSeeder {
           password: 'admin123',
           bio: 'System administrator with full access',
           isActive: true,
-          roleName: 'admin',
+          roleName: ROLES.ADMIN,
         },
         {
           email: 'workspace.admin@trello.com',
@@ -464,7 +506,15 @@ export class AuthorizationSeeder {
           password: 'workspace123',
           bio: 'Workspace administrator',
           isActive: true,
-          roleName: 'workspace_admin',
+          roleName: ROLES.WORKSPACE_ADMIN,
+        },
+        {
+          email: 'board.admin@trello.com',
+          name: 'Board Admin',
+          password: 'board123',
+          bio: 'Board administrator',
+          isActive: true,
+          roleName: ROLES.BOARD_ADMIN,
         },
         {
           email: 'board.owner@trello.com',
@@ -472,7 +522,7 @@ export class AuthorizationSeeder {
           password: 'board123',
           bio: 'Board owner and manager',
           isActive: true,
-          roleName: 'board_owner',
+          roleName: ROLES.BOARD_OWNER,
         },
         {
           email: 'member@trello.com',
@@ -480,7 +530,7 @@ export class AuthorizationSeeder {
           password: 'member123',
           bio: 'Active team member',
           isActive: true,
-          roleName: 'board_member',
+          roleName: ROLES.BOARD_MEMBER,
         },
         {
           email: 'observer@trello.com',
@@ -488,23 +538,7 @@ export class AuthorizationSeeder {
           password: 'observer123',
           bio: 'Read-only observer',
           isActive: true,
-          roleName: 'board_observer',
-        },
-        {
-          email: 'user@trello.com',
-          name: 'Regular User',
-          password: 'user123',
-          bio: 'Regular user account',
-          isActive: true,
-          roleName: 'user',
-        },
-        {
-          email: 'guest@trello.com',
-          name: 'Guest User',
-          password: 'guest123',
-          bio: 'Guest with limited access',
-          isActive: true,
-          roleName: 'guest',
+          roleName: ROLES.BOARD_OBSERVER,
         },
       ];
 
@@ -532,27 +566,6 @@ export class AuthorizationSeeder {
         // Associate user with role
         const role = createdRoles.get(userData.roleName);
         if (!role) continue;
-
-        // Check if user-role already exists
-        // const exists = await userRoleRepository.findOne({
-        //     where: { userId: user.id, roleId: role.id },
-        // });
-
-        // if (!exists) {
-        //     await userRoleRepository.save(
-        //         userRoleRepository.create({
-        //             userId: user.id,
-        //             roleId: role.id,
-        //         })
-        //     );
-        //     console.log(
-        //         `✅ Linked user ${userData.email} to role: ${userData.roleName}`
-        //     );
-        // } else {
-        //     console.log(
-        //         `⏭️  User ${userData.email} already linked to role: ${userData.roleName}`
-        //     );
-        // }
       }
 
       console.log('🎉 RBAC seeding completed successfully!');
@@ -570,9 +583,6 @@ export class AuthorizationSeeder {
 
     try {
       console.log('🧹 Cleaning up RBAC data...');
-
-      // Delete in correct order to respect foreign keys
-      // Sử dụng .clear() thay vì .delete({})
 
       await AppDataSource.getRepository(RolePermission).clear();
       console.log('🗑️  Removed all role-permission associations');
