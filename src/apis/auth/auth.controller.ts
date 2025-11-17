@@ -1,4 +1,3 @@
-// backend/src/apis/auth/auth.controller.ts
 import { LoginDto, RegisterDto } from './auth.dto';
 import { AuthService } from './auth.service';
 import { Request, Response } from 'express';
@@ -332,7 +331,6 @@ export class AuthController {
     }
   }
 
-  // ✅ Update profile by :id
   static async updateProfile(req: Request, res: Response) {
     try {
       const userId = req.params.id;
@@ -355,8 +353,7 @@ export class AuthController {
       return res.status(400).json({ success: false, message: error.message });
     }
   }
-
-  // ✅ Update avatar by :id
+  
   static async updateAvatar(req: Request, res: Response) {
     try {
       const userId = req.params.id;
@@ -384,4 +381,5 @@ export class AuthController {
     }
   }
 }
+
 
