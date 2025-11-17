@@ -1,4 +1,3 @@
-// backend/src/apis/users/users.controller.ts
 import { Request, Response } from 'express';
 import { UserService } from './user.service';
 import {
@@ -59,11 +58,10 @@ export class UserController {
     }
   }
 
-  // ✅ Update profile
   static async updateProfile(req: Request, res: Response) {
     try {
       const userId = req.params.id;
-      const data = req.body; // { name, bio, ... }
+      const data = req.body;
 
       const updatedUser = await userService.updateProfile(userId, data);
       res.status(200).json({ success: true, message: 'Profile updated', data: updatedUser });
@@ -72,11 +70,10 @@ export class UserController {
     }
   }
 
-  // ✅ Upload avatar
   static async uploadAvatar(req: Request, res: Response) {
     try {
       const userId = req.params.id;
-      const file = req.file; // multer sẽ gắn file vào req.file
+      const file = req.file; 
 
       if (!file) {
         return res.status(400).json({ success: false, message: 'No file uploaded' });
@@ -89,3 +86,4 @@ export class UserController {
     }
   }
 }
+
