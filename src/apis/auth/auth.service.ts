@@ -1,4 +1,3 @@
-// backend/src/apis/auth/auth.service.ts
 import { AppDataSource } from '../../config/data-source';
 import { User } from '../../common/entities/user.entity';
 import { RefreshToken } from '../../common/entities/refresh-token.entity';
@@ -6,14 +5,11 @@ import { LoginDto, RegisterDto } from './auth.dto';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import { generateJwt } from '../../common/utils/jwtUtils';
-<<<<<<< HEAD
 import { UserService } from "../users/user.service";
 const userService = new UserService();
-=======
 import axios from 'axios';
 import { EmailService } from './mail.service';
 import { redisClient } from '@/config/redisClient';
->>>>>>> 205faa8be994ecb1adef2c596073d32ff28bde02
 
 const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || 'default-refresh';
 
@@ -256,13 +252,12 @@ export class AuthService {
     return `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
   }
 
-  // ✅ Update profile
   async updateProfile(userId: string, data: { name?: string; bio?: string }) {
     return await userService.updateProfile(userId, data);
   }
 
-  // ✅ Update avatar
   async updateAvatar(userId: string, avatarPath: string) {
     return await userService.updateAvatar(userId, avatarPath);
   }
 }
+
