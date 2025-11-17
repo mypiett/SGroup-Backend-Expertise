@@ -6,6 +6,7 @@ import {
   UpdateWorkspaceDto,
   AddMemberDto,
   UpdateMemberRoleDto,
+  InviteMemberDto,
 } from './workspace.dto';
 import {
   ResponseStatus,
@@ -132,6 +133,31 @@ export class WorkspaceController {
       return new ServiceResponse(
         ResponseStatus.Success,
         'User workspaces retrieved successfully',
+        workspaces,
+        StatusCodes.OK
+      );
+    } catch (error) {
+      return new ServiceResponse(
+        ResponseStatus.Failed,
+        error.message,
+        null,
+        StatusCodes.BAD_REQUEST
+      );
+    }
+  }
+
+  // Get archived workspaces
+  static async getArchivedWorkspaces(
+    req: Request
+  ): Promise<ServiceResponse<any>> {
+    try {
+      const userId = req.user?.userId;
+      console.log('Fetching archived workspaces for user ID:', userId);
+      const workspaces =
+        await workspaceService.getArchivedWorkspacesByUserId(userId);
+      return new ServiceResponse(
+        ResponseStatus.Success,
+        'Archived workspaces retrieved successfully',
         workspaces,
         StatusCodes.OK
       );
@@ -410,6 +436,61 @@ export class WorkspaceController {
         error.message,
         null,
         StatusCodes.BAD_REQUEST
+      );
+    }
+  }
+
+  // Invite member by email
+  static async inviteMemberByEmail(
+    req: Request
+  ): Promise<ServiceResponse<any>> {
+    try {
+      const workspaceId = req.params.id;
+      const currentUserId = req.user?.userId;
+      const data: InviteMemberDto = req.body;
+
+      const result = await workspaceService.inviteMemberByEmail(
+        workspaceId,
+        data,
+        currentUserId
+      );
+      return new ServiceResponse(
+        ResponseStatus.Success,
+        result.message,
+        result,
+        StatusCodes.CREATED
+      );
+    } catch (error) {
+      if (
+        error.message === 'Workspace not found' ||
+        error.message === 'Role not found'
+      ) {
+        return new ServiceResponse(
+          ResponseStatus.Failed,
+          error.message,
+          null,
+          StatusCodes.NOT_FOUND
+        );
+      }
+      if (
+        error.message.includes('not a member') ||
+        error.message.includes('Only workspace admin') ||
+        error.message.includes('already a member') ||
+        error.message.includes('Invalid email') ||
+        error.message.includes('Invalid role')
+      ) {
+        return new ServiceResponse(
+          ResponseStatus.Failed,
+          error.message,
+          null,
+          StatusCodes.BAD_REQUEST
+        );
+      }
+      return new ServiceResponse(
+        ResponseStatus.Failed,
+        error.message,
+        null,
+        StatusCodes.INTERNAL_SERVER_ERROR
       );
     }
   }
