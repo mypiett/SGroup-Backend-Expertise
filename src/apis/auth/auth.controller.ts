@@ -16,7 +16,6 @@ import { StatusCodes } from 'http-status-codes';
 export class AuthController {
   static async register(req: Request): Promise<ServiceResponse<any>> {
     const data: RegisterDto = req.body;
-    console.log('📥 [REGISTER] Incoming data:', data);
 
     if (!data.name || !data.email || !data.password) {
       return new ServiceResponse(
@@ -82,7 +81,6 @@ export class AuthController {
     res: Response
   ): Promise<ServiceResponse<any>> {
     const data: LoginDto = req.body;
-    console.log('📥 [LOGIN] Incoming data:', data);
 
     if (!data.email || !data.password) {
       return new ServiceResponse(
@@ -166,7 +164,6 @@ export class AuthController {
   static async refreshToken(req: Request): Promise<ServiceResponse<any>> {
     try {
       const refreshToken = req.cookies.refreshToken;
-      console.log('📥 [REFRESH] Token:', refreshToken);
 
       if (!refreshToken) {
         return new ServiceResponse(
@@ -269,7 +266,6 @@ export class AuthController {
   static async getMe(req: Request): Promise<ServiceResponse<any>> {
     try {
       const authHeader = req.headers.authorization;
-      console.log('📥 [GET ME] Auth header:', authHeader);
 
       if (!authHeader) {
         return new ServiceResponse(
@@ -282,7 +278,6 @@ export class AuthController {
 
       const token = authHeader.split(' ')[1];
       const decoded = jwt.verify(token, process.env.JWT_SECRET) as any;
-      console.log('🔓 [GET ME] Decoded token:', decoded);
 
       const user = await authService.getMe(decoded.userId);
       return new ServiceResponse(
@@ -307,7 +302,6 @@ export class AuthController {
   ): Promise<ServiceResponse<any>> {
     try {
       const refreshToken = req.cookies.refreshToken;
-      console.log('📥 [LOGOUT] Token:', refreshToken);
 
       if (!refreshToken) {
         return new ServiceResponse(
@@ -319,7 +313,6 @@ export class AuthController {
       }
 
       const result = await authService.logout(refreshToken);
-      console.log('✅ [LOGOUT] Success:', result);
 
       res.clearCookie('refreshToken');
 
@@ -391,3 +384,4 @@ export class AuthController {
     }
   }
 }
+
