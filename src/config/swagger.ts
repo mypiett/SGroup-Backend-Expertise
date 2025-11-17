@@ -6,9 +6,19 @@ const options: swaggerJSDoc.Options = {
   definition: {
     openapi: '3.0.0',
     info: {
-      title: 'test swagger',
+      title: 'Swagger API Documentation',
       version: '1.0.0',
-      description: 'test swagger',
+      description: 'API documentation for the application',
+    },
+    components: {
+      securitySchemes: {
+        bearerAuth: {
+          type: 'http',
+          scheme: 'bearer',
+          bearerFormat: 'JWT',
+          description: 'Enter your JWT token',
+        },
+      },
     },
   },
   apis: ['src/apis/**/*.ts'],
