@@ -1,183 +1,431 @@
 import { Router } from 'express';
 import { WorkspaceController } from './workspace.controller';
-import { OpenAPIRegistry } from '@asteasolutions/zod-to-openapi';
-import { createApiResponse } from '@/api-docs/openAPIResponseBuilders';
 import { handleServiceResponse } from '@/common/utils/httpHandlers';
-import z from 'zod';
-import {
-  PostWorkspace,
-  WorkspaceSchema,
-  UpdateWorkspace,
-  PostWorkspaceMember,
-  PatchMember,
-  GetMemberSchema,
-  GetWorkspaceSchema,
-  UpdateWorkspaceSchema,
-  UserSchema,
-} from './schemas';
 
 const route = Router();
 
-export const workspaceRegistry = new OpenAPIRegistry();
-
-// Registering OpenAPI paths
-const registerPaths = () => {
-  workspaceRegistry.registerPath({
-    method: 'post',
-    path: '/workspaces',
-    tags: ['Workspace'],
-    request: { body: PostWorkspace },
-    responses: createApiResponse(WorkspaceSchema, 'Success'),
-  });
-
-  workspaceRegistry.registerPath({
-    method: 'get',
-    path: '/workspaces',
-    tags: ['Workspace'],
-    responses: createApiResponse(z.array(WorkspaceSchema), 'Success'),
-  });
-
-  workspaceRegistry.registerPath({
-    method: 'get',
-    path: '/workspaces/{id}',
-    tags: ['Workspace'],
-    request: { params: GetWorkspaceSchema.shape.params },
-    responses: createApiResponse(WorkspaceSchema, 'Success'),
-  });
-
-  workspaceRegistry.registerPath({
-    method: 'put',
-    path: '/workspaces/{id}',
-    tags: ['Workspace'],
-    request: {
-      params: UpdateWorkspaceSchema.shape.params,
-      body: UpdateWorkspace,
-    },
-    responses: createApiResponse(WorkspaceSchema, 'Success'),
-  });
-
-  workspaceRegistry.registerPath({
-    method: 'delete',
-    path: '/workspaces/{id}',
-    tags: ['Workspace'],
-    request: { params: GetWorkspaceSchema.shape.params },
-    responses: createApiResponse(WorkspaceSchema, 'Success'),
-  });
-
-  // workspace-members
-  workspaceRegistry.registerPath({
-    method: 'get',
-    path: '/workspaces/{id}/members',
-    tags: ['Workspace'],
-    request: { params: GetWorkspaceSchema.shape.params },
-    responses: createApiResponse(z.array(UserSchema), 'Success'),
-  });
-
-  workspaceRegistry.registerPath({
-    method: 'post',
-    path: '/workspaces/{id}/members',
-    tags: ['Workspace'],
-    request: {
-      params: GetWorkspaceSchema.shape.params,
-      body: PostWorkspaceMember,
-    },
-    responses: createApiResponse(z.array(UserSchema), 'Success'),
-  });
-
-  workspaceRegistry.registerPath({
-    method: 'patch',
-    path: '/workspaces/{id}/members/{memberId}',
-    tags: ['Workspace'],
-    request: {
-      params: GetMemberSchema.shape.params,
-      body: PatchMember,
-    },
-    responses: createApiResponse(z.array(UserSchema), 'Success'),
-  });
-
-  workspaceRegistry.registerPath({
-    method: 'delete',
-    path: '/workspaces/{id}/members/{memberId}',
-    tags: ['Workspace'],
-    request: {
-      params: GetMemberSchema.shape.params,
-    },
-    responses: createApiResponse(z.array(UserSchema), 'Success'),
-  });
-};
-
-// Get all workspaces (GET /workspaces/all) -  development only
+/**
+ * @swagger
+ * /workspaces/all:
+ *   get:
+ *     tags:
+ *       - Workspace
+ *     summary: Get all workspaces (Development only)
+ *     description: Retrieve all workspaces in the system. For development purposes only.
+ *     security:
+ *      - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Successfully retrieved all workspaces
+ *       500:
+ *         description: Server Error
+ */
 route.get('/all', async (_req, res) => {
   const serviceResponse = await WorkspaceController.getAllWorkspaces();
   return handleServiceResponse(serviceResponse, res);
 });
 
-// Create workspace (POST /workspaces)
+/**
+ * @swagger
+ * /workspaces:
+ *   post:
+ *     tags:
+ *       - Workspace
+ *     summary: Create a new workspace
+ *     description: Create a new workspace for the authenticated user
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - name
+ *             properties:
+ *               name:
+ *                 type: string
+ *                 example: My Workspace
+ *               description:
+ *                 type: string
+ *                 example: This is my workspace description
+ *     responses:
+ *       201:
+ *         description: Workspace created successfully
+ *       400:
+ *         description: Invalid input
+ *       401:
+ *         description: Unauthorized
+ *       500:
+ *         description: Server Error
+ */
 route.post('/', async (req, res) => {
   const serviceResponse = await WorkspaceController.createWorkspace(req);
   return handleServiceResponse(serviceResponse, res);
 });
 
-// Get user's workspaces (GET /workspaces)
+/**
+ * @swagger
+ * /workspaces:
+ *   get:
+ *     tags:
+ *       - Workspace
+ *     summary: Get user's workspaces
+ *     description: Retrieve all workspaces belonging to the authenticated user
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Successfully retrieved workspaces
+ *       401:
+ *         description: Unauthorized
+ *       500:
+ *         description: Server Error
+ */
 route.get('/', async (req, res) => {
   const serviceResponse = await WorkspaceController.getUserWorkspaces(req);
   return handleServiceResponse(serviceResponse, res);
 });
 
-//Get workspace by ID (GET /workspaces/:id)
+/**
+ * @swagger
+ * /workspaces/{id}:
+ *   get:
+ *     tags:
+ *       - Workspace
+ *     summary: Get workspace by ID
+ *     description: Retrieve a specific workspace by its ID
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         description: Workspace ID
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Successfully retrieved workspace
+ *       401:
+ *         description: Unauthorized
+ *       404:
+ *         description: Workspace not found
+ *       500:
+ *         description: Server Error
+ */
 route.get('/:id', async (req, res) => {
   const serviceResponse = await WorkspaceController.getWorkspaceById(req);
   return handleServiceResponse(serviceResponse, res);
 });
 
-// Update workspace (PUT /workspaces/:id)
+/**
+ * @swagger
+ * /workspaces/{id}:
+ *   put:
+ *     tags:
+ *       - Workspace
+ *     summary: Update workspace
+ *     description: Update workspace information
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         description: Workspace ID
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               name:
+ *                 type: string
+ *                 example: Updated Workspace Name
+ *               description:
+ *                 type: string
+ *                 example: Updated description
+ *     responses:
+ *       200:
+ *         description: Workspace updated successfully
+ *       401:
+ *         description: Unauthorized
+ *       404:
+ *         description: Workspace not found
+ *       500:
+ *         description: Server Error
+ */
 route.put('/:id', async (req, res) => {
   const serviceResponse = await WorkspaceController.updateWorkspace(req);
   return handleServiceResponse(serviceResponse, res);
 });
 
-// Delete workspace (DELETE /workspaces/:id)
+/**
+ * @swagger
+ * /workspaces/{id}:
+ *   delete:
+ *     tags:
+ *       - Workspace
+ *     summary: Delete workspace
+ *     description: Permanently delete a workspace
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         description: Workspace ID
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Workspace deleted successfully
+ *       401:
+ *         description: Unauthorized
+ *       404:
+ *         description: Workspace not found
+ *       500:
+ *         description: Server Error
+ */
 route.delete('/:id', async (req, res) => {
   const serviceResponse = await WorkspaceController.deleteWorkspace(req);
   return handleServiceResponse(serviceResponse, res);
 });
 
-// Archive workspace (PATCH /workspaces/:id/archive)
+/**
+ * @swagger
+ * /workspaces/{id}/archive:
+ *   patch:
+ *     tags:
+ *       - Workspace
+ *     summary: Archive workspace
+ *     description: Archive a workspace (soft delete)
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         description: Workspace ID
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Workspace archived successfully
+ *       401:
+ *         description: Unauthorized
+ *       404:
+ *         description: Workspace not found
+ *       500:
+ *         description: Server Error
+ */
 route.patch('/:id/archive', async (req, res) => {
   const serviceResponse = await WorkspaceController.archiveWorkspace(req);
   return handleServiceResponse(serviceResponse, res);
 });
 
-// Reopen workspace (PATCH /workspaces/:id/reopen)
+/**
+ * @swagger
+ * /workspaces/{id}/reopen:
+ *   patch:
+ *     tags:
+ *       - Workspace
+ *     summary: Reopen workspace
+ *     description: Reopen an archived workspace
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         description: Workspace ID
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Workspace reopened successfully
+ *       401:
+ *         description: Unauthorized
+ *       404:
+ *         description: Workspace not found
+ *       500:
+ *         description: Server Error
+ */
 route.patch('/:id/reopen', async (req, res) => {
   const serviceResponse = await WorkspaceController.reopenWorkspace(req);
   return handleServiceResponse(serviceResponse, res);
 });
 
-// Get workspace members (GET /workspaces/:id/members)
+/**
+ * @swagger
+ * /workspaces/{id}/members:
+ *   get:
+ *     tags:
+ *       - Workspace
+ *     summary: Get workspace members
+ *     description: Retrieve all members of a workspace
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         description: Workspace ID
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Successfully retrieved workspace members
+ *       401:
+ *         description: Unauthorized
+ *       404:
+ *         description: Workspace not found
+ *       500:
+ *         description: Server Error
+ */
 route.get('/:id/members', async (req, res) => {
   const serviceResponse = await WorkspaceController.getWorkspaceMembers(req);
   return handleServiceResponse(serviceResponse, res);
 });
 
-// Add member to workspace (POST /workspaces/:id/members)
+/**
+ * @swagger
+ * /workspaces/{id}/members:
+ *   post:
+ *     tags:
+ *       - Workspace
+ *     summary: Add member to workspace
+ *     description: Add a new member to the workspace
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         description: Workspace ID
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - userId
+ *             properties:
+ *               userId:
+ *                 type: string
+ *                 example: 507f1f77bcf86cd799439011
+ *               roleId:
+ *                 type: string
+ *                 example: 507f1f77bcf86cd799439012
+ *     responses:
+ *       200:
+ *         description: Member added successfully
+ *       401:
+ *         description: Unauthorized
+ *       404:
+ *         description: Workspace or user not found
+ *       500:
+ *         description: Server Error
+ */
 route.post('/:id/members', async (req, res) => {
   const serviceResponse = await WorkspaceController.addMember(req);
   return handleServiceResponse(serviceResponse, res);
 });
 
-// Update member role (PATCH /workspaces/:id/members/:memberId)
+/**
+ * @swagger
+ * /workspaces/{id}/members/{memberId}:
+ *   patch:
+ *     tags:
+ *       - Workspace
+ *     summary: Update member role
+ *     description: Update the role of a workspace member
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         description: Workspace ID
+ *         schema:
+ *           type: string
+ *       - in: path
+ *         name: memberId
+ *         required: true
+ *         description: Member ID
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - roleId
+ *             properties:
+ *               roleId:
+ *                 type: string
+ *                 example: 507f1f77bcf86cd799439012
+ *     responses:
+ *       200:
+ *         description: Member role updated successfully
+ *       401:
+ *         description: Unauthorized
+ *       404:
+ *         description: Workspace or member not found
+ *       500:
+ *         description: Server Error
+ */
 route.patch('/:id/members/:memberId', async (req, res) => {
   const serviceResponse = await WorkspaceController.updateMemberRole(req);
   return handleServiceResponse(serviceResponse, res);
 });
 
-// Remove member (DELETE /workspaces/:id/members/:memberId)
+/**
+ * @swagger
+ * /workspaces/{id}/members/{memberId}:
+ *   delete:
+ *     tags:
+ *       - Workspace
+ *     summary: Remove member from workspace
+ *     description: Remove a member from the workspace
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         description: Workspace ID
+ *         schema:
+ *           type: string
+ *       - in: path
+ *         name: memberId
+ *         required: true
+ *         description: Member ID
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Member removed successfully
+ *       401:
+ *         description: Unauthorized
+ *       404:
+ *         description: Workspace or member not found
+ *       500:
+ *         description: Server Error
+ */
 route.delete('/:id/members/:memberId', async (req, res) => {
   const serviceResponse = await WorkspaceController.removeMember(req);
   return handleServiceResponse(serviceResponse, res);
 });
-
-registerPaths();
 
 export default route;

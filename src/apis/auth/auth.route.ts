@@ -1,9 +1,9 @@
 import { Router } from 'express';
 import { AuthController } from './auth.controller';
 import { EmailController } from './mail.controller';
+import { handleServiceResponse } from '@/common/utils/httpHandlers';
 
 const route = Router();
-const authController = new AuthController();
 const emailController = new EmailController();
 
 /**
@@ -121,7 +121,10 @@ route.get('/verify-email', emailController.verifyEmail.bind(emailController));
  *             example:
  *               message: "Internal server error"
  */
-route.post('/register', authController.register.bind(authController));
+route.post('/register', async (req, res) => {
+  const serviceResponse = await AuthController.register(req);
+  return handleServiceResponse(serviceResponse, res);
+});
 
 /**
  * @swagger
@@ -164,7 +167,10 @@ route.post('/register', authController.register.bind(authController));
  *       400:
  *         description: Invalid credentials or missing fields
  */
-route.post('/login', authController.login.bind(authController));
+route.post('/login', async (req, res) => {
+  const serviceResponse = await AuthController.login(req, res);
+  return handleServiceResponse(serviceResponse, res);
+});
 
 /**
  * @swagger
@@ -178,7 +184,9 @@ route.post('/login', authController.login.bind(authController));
  *       302:
  *         description: Redirect to Google login page
  */
-route.get('/google', authController.oauthRedirect.bind(authController));
+route.get('/google', (req, res) => {
+  AuthController.oauthRedirect(req, res);
+});
 
 /**
  * @swagger
@@ -218,10 +226,9 @@ route.get('/google', authController.oauthRedirect.bind(authController));
  *       400:
  *         description: Invalid code or failed login
  */
-route.get(
-  '/google/callback',
-  authController.oauthCallback.bind(authController)
-);
+route.get('/google/callback', (req, res) => {
+  AuthController.oauthCallback(req, res);
+});
 
 /**
  * @swagger
@@ -275,10 +282,10 @@ route.get(
  *                   type: string
  *                   example: Too many requests. Please wait a few minutes before requesting again.
  */
-route.post(
-  '/forget-password',
-  authController.forgetPassword.bind(authController)
-);
+route.post('/forget-password', async (req, res) => {
+  const serviceResponse = await AuthController.forgetPassword(req);
+  return handleServiceResponse(serviceResponse, res);
+});
 
 /**
  * @swagger
@@ -331,15 +338,24 @@ route.post(
  *                   type: string
  *                   example: Invalid code
  */
-route.post(
-  '/reset-password',
-  authController.resetPassword.bind(authController)
-);
+route.post('/reset-password', async (req, res) => {
+  const serviceResponse = await AuthController.resetPassword(req);
+  return handleServiceResponse(serviceResponse, res);
+});
 
-route.post('/refreshToken', authController.refreshToken.bind(authController));
+route.post('/refreshToken', async (req, res) => {
+  const serviceResponse = await AuthController.refreshToken(req);
+  return handleServiceResponse(serviceResponse, res);
+});
 
-route.get('/me', authController.getMe.bind(authController));
+route.get('/me', async (req, res) => {
+  const serviceResponse = await AuthController.getMe(req);
+  return handleServiceResponse(serviceResponse, res);
+});
 
-route.post('/logout', authController.logout.bind(authController));
+route.post('/logout', async (req, res) => {
+  const serviceResponse = await AuthController.logout(req, res);
+  return handleServiceResponse(serviceResponse, res);
+});
 
 export default route;

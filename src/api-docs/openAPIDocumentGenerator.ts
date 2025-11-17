@@ -3,12 +3,10 @@ import {
   OpenAPIRegistry,
 } from '@asteasolutions/zod-to-openapi';
 
-import { workspaceRegistry } from '@/apis/workspaces/workspace.route';
-
 export function generateOpenAPIDocument() {
   const registry = new OpenAPIRegistry([
     // Add more registries here as your project grows
-    workspaceRegistry,
+    // Note: Workspace API now uses JSDoc swagger instead
   ]);
 
   registry.registerComponent('securitySchemes', 'bearerAuth', {
