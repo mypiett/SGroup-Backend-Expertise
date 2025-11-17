@@ -42,5 +42,15 @@ export class AddMemberDto {
 export class UpdateMemberRoleDto {
   @IsUUID('4', { message: 'Role ID must be a valid UUID' })
   @IsNotEmpty({ message: 'Role ID is required' })
-  roleId: string;
+  roleName: string;
+}
+
+export class InviteMemberDto {
+  @IsString({ message: 'Email is required' })
+  @IsNotEmpty({ message: 'Email is required' })
+  email: string;
+
+  @IsString({ message: 'Role name is required' })
+  @IsNotEmpty({ message: 'Role name is required' })
+  roleName: string;
 }

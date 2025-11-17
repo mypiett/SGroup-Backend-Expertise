@@ -90,6 +90,29 @@ route.get('/', async (req, res) => {
 
 /**
  * @swagger
+ * /workspaces/archived:
+ *   get:
+ *     tags:
+ *       - Workspace
+ *     summary: Get user's archived workspaces
+ *     description: Retrieve all archived workspaces belonging to the authenticated user
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Successfully retrieved archived workspaces
+ *       401:
+ *         description: Unauthorized
+ *       500:
+ *         description: Server Error
+ */
+route.get('/archived', async (req, res) => {
+  const serviceResponse = await WorkspaceController.getArchivedWorkspaces(req);
+  return handleServiceResponse(serviceResponse, res);
+});
+
+/**
+ * @swagger
  * /workspaces/{id}:
  *   get:
  *     tags:
@@ -337,6 +360,58 @@ route.get('/:id/members', async (req, res) => {
  */
 route.post('/:id/members', async (req, res) => {
   const serviceResponse = await WorkspaceController.addMember(req);
+  return handleServiceResponse(serviceResponse, res);
+});
+
+/**
+ * @swagger
+ * /workspaces/{id}/invite:
+ *   post:
+ *     tags:
+ *       - Workspace
+ *     summary: Invite member by email
+ *     description: Invite a user to join the workspace by email. If user exists, add directly. If not, send invitation email.
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         description: Workspace ID
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - email
+ *               - roleName
+ *             properties:
+ *               email:
+ *                 type: string
+ *                 format: email
+ *                 example: user@example.com
+ *               roleName:
+ *                 type: string
+ *                 example: workspace_member
+ *                 description: Role name (workspace_admin, workspace_moderator, workspace_member, workspace_observer)
+ *     responses:
+ *       201:
+ *         description: Invitation sent or user added successfully
+ *       400:
+ *         description: Invalid input or user already a member
+ *       401:
+ *         description: Unauthorized
+ *       404:
+ *         description: Workspace or role not found
+ *       500:
+ *         description: Server Error
+ */
+route.post('/:id/invite', async (req, res) => {
+  const serviceResponse = await WorkspaceController.inviteMemberByEmail(req);
   return handleServiceResponse(serviceResponse, res);
 });
 
