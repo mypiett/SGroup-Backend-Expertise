@@ -1,8 +1,8 @@
 import { Router } from 'express';
 import { UserController } from './users.controller';
+import { handleServiceResponse } from '@/common/utils/httpHandlers';
 
 const route = Router();
-// const userController = new UserController();
 
 /**
  * @swagger
@@ -18,7 +18,10 @@ const route = Router();
  *       500:
  *         description: Server Error
  */
-route.route('/').get((req, res) => UserController.getAllUsers(req, res));
+route.route('/').get(async (req, res) => {
+  const serviceResponse = await UserController.getAllUsers();
+  return handleServiceResponse(serviceResponse, res);
+});
 
 /**
  * @swagger
@@ -43,6 +46,9 @@ route.route('/').get((req, res) => UserController.getAllUsers(req, res));
  *       500:
  *         description: Server Error
  */
-route.route('/:id').get((req, res) => UserController.getDetailUser(req, res));
+route.route('/:id').get(async (req, res) => {
+  const serviceResponse = await UserController.getDetailUser(req);
+  return handleServiceResponse(serviceResponse, res);
+});
 
 export default route;

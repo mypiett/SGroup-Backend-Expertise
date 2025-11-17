@@ -1,47 +1,60 @@
 import { Request, Response } from 'express';
 import { UserService } from './user.service';
+import {
+  ServiceResponse,
+  ResponseStatus,
+} from '@/common/models/serviceResponse';
+import { StatusCodes } from 'http-status-codes';
 
 const userService = new UserService();
 
 export class UserController {
-  static async getAllUsers(req: Request, res: Response) {
+  static async getAllUsers(): Promise<ServiceResponse<any>> {
     try {
       const users = await userService.getAllUsers();
-      res.status(200).json({
-        success: true,
-        data: users,
-      });
-    } catch (error) {
-      res.status(500).json({
-        success: false,
-        message: 'Error fetching users',
-        error: error.message,
-      });
+      return new ServiceResponse(
+        ResponseStatus.Success,
+        'Users retrieved successfully',
+        users,
+        StatusCodes.OK
+      );
+    } catch {
+      return new ServiceResponse(
+        ResponseStatus.Failed,
+        'Error fetching users',
+        null,
+        StatusCodes.INTERNAL_SERVER_ERROR
+      );
     }
   }
 
-  static async getDetailUser(req: Request, res: Response) {
+  static async getDetailUser(req: Request): Promise<ServiceResponse<any>> {
     try {
-      const userId = req.params.id; // UUID is string
+      const userId = req.params.id;
       const user = await userService.getDetailUser(userId);
 
       if (!user) {
-        return res.status(404).json({
-          success: false,
-          message: 'User not found',
-        });
+        return new ServiceResponse(
+          ResponseStatus.Failed,
+          'User not found',
+          null,
+          StatusCodes.NOT_FOUND
+        );
       }
 
-      res.status(200).json({
-        success: true,
-        data: user,
-      });
-    } catch (error) {
-      res.status(500).json({
-        success: false,
-        message: 'Error fetching user detail',
-        error: error.message,
-      });
+      return new ServiceResponse(
+        ResponseStatus.Success,
+        'User retrieved successfully',
+        user,
+        StatusCodes.OK
+      );
+    } catch {
+      return new ServiceResponse(
+        ResponseStatus.Failed,
+        'Error fetching user detail',
+        null,
+        StatusCodes.INTERNAL_SERVER_ERROR
+      );
     }
   }
 }
