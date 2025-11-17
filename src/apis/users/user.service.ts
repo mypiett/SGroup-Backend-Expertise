@@ -1,4 +1,3 @@
-// backend/src/apis/users/user.service.ts
 import { AppDataSource } from '../../config/data-source';
 import { User } from '../../common/entities/user.entity';
 
@@ -36,7 +35,6 @@ export class UserService {
     });
   }
 
-  // ✅ Update profile
   async updateProfile(userId: string, data: Partial<User>): Promise<User> {
     const user = await this.userRepository.findOneBy({ id: userId });
     if (!user) throw new Error('User not found');
@@ -44,8 +42,7 @@ export class UserService {
     Object.assign(user, data);
     return await this.userRepository.save(user);
   }
-
-  // ✅ Update avatar
+  
   async updateAvatar(userId: string, avatarPath: string): Promise<User> {
     const user = await this.userRepository.findOneBy({ id: userId });
     if (!user) throw new Error('User not found');
@@ -54,3 +51,4 @@ export class UserService {
     return await this.userRepository.save(user);
   }
 }
+
