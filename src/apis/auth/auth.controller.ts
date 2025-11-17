@@ -1,3 +1,4 @@
+// backend/src/apis/auth/auth.controller.ts
 import { LoginDto, RegisterDto } from './auth.dto';
 import { AuthService } from './auth.service';
 import { Request, Response } from 'express';
@@ -11,31 +12,37 @@ export class AuthController {
     console.log('📥 [REGISTER] Incoming data:', data);
 
     if (!data.name || !data.email || !data.password) {
-      return res.status(400).json({ message: 'All fields are required' });
+      return res.status(400).json({ success: false, message: 'All fields are required' });
     }
-
-    console.log('Incoming data:', data);
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(data.email)) {
-      console.warn('⚠️ [REGISTER] Invalid email format:', data.email);
-      return res.status(400).json({ message: 'Invalid email format' });
+      return res.status(400).json({ success: false, message: 'Invalid email format' });
     }
 
     if (data.password.length < 6) {
-      console.warn('⚠️ [REGISTER] Password too short');
-      return res
-        .status(400)
-        .json({ message: 'Password must be at least 6 characters' });
+      return res.status(400).json({ success: false, message: 'Password must be at least 6 characters' });
     }
 
     try {
       const result = await authService.register(data);
-      console.log('✅ [REGISTER] Success:', result);
-      return res.status(201).json(result);
+      const user = await authService.getMe(result.userId); // lấy lại user đầy đủ
+
+      return res.status(201).json({
+        success: true,
+        message: 'Register successfully',
+        responseObject: {
+          user: {
+            id: user.id,
+            name: user.name,
+            email: user.email,
+            avatarUrl: user.avatarUrl,
+            bio: user.bio,
+          },
+        },
+      });
     } catch (error: any) {
-      console.error('❌ [REGISTER] Error:', error.message);
-      return res.status(400).json({ message: error.message });
+      return res.status(400).json({ success: false, message: error.message });
     }
   }
 
@@ -44,32 +51,40 @@ export class AuthController {
     console.log('📥 [LOGIN] Incoming data:', data);
 
     if (!data.email || !data.password) {
-      console.warn('⚠️ [LOGIN] Missing fields');
-      return res.status(400).json({ message: 'All fields are required' });
+      return res.status(400).json({ success: false, message: 'All fields are required' });
     }
 
     try {
       const userAgent = req.headers['user-agent'];
       const ip = req.ip || req.socket.remoteAddress;
-      console.log('🌐 [LOGIN] IP:', ip, '| User-Agent:', userAgent);
 
       const result = await authService.login(data, userAgent, ip);
-      console.log('✅ [LOGIN] Success:', result);
+      const user = await authService.getMe(result.userId); // lấy lại user đầy đủ
 
       res.cookie('refreshToken', result.refreshToken, {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'lax',
-        maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+        maxAge: 7 * 24 * 60 * 60 * 1000,
       });
 
       return res.status(200).json({
+        success: true,
         message: 'Login successful',
-        accessToken: result.accessToken,
+        responseObject: {
+          accessToken: result.accessToken,
+          refreshToken: result.refreshToken,
+          user: {
+            id: user.id,
+            name: user.name,
+            email: user.email,
+            avatarUrl: user.avatarUrl,
+            bio: user.bio,
+          },
+        },
       });
     } catch (error: any) {
-      console.error('❌ [LOGIN] Error:', error.message);
-      return res.status(400).json({ message: error.message });
+      return res.status(400).json({ success: false, message: error.message });
     }
   }
 
@@ -140,6 +155,58 @@ export class AuthController {
     } catch (error: any) {
       console.error('❌ [LOGOUT] Error:', error.message);
       return res.status(400).json({ message: error.message });
+    }
+  }
+
+  // ✅ Update profile by :id
+  static async updateProfile(req: Request, res: Response) {
+    try {
+      const userId = req.params.id;
+      const { name, bio } = req.body;
+
+      const updatedUser = await authService.updateProfile(userId, { name, bio });
+
+      return res.status(200).json({
+        success: true,
+        message: "Profile updated successfully",
+        responseObject: {
+          id: updatedUser.id,
+          name: updatedUser.name,
+          email: updatedUser.email,
+          avatarUrl: updatedUser.avatarUrl,
+          bio: updatedUser.bio,
+        },
+      });
+    } catch (error: any) {
+      return res.status(400).json({ success: false, message: error.message });
+    }
+  }
+
+  // ✅ Update avatar by :id
+  static async updateAvatar(req: Request, res: Response) {
+    try {
+      const userId = req.params.id;
+      const file = req.file;
+
+      if (!file) {
+        return res.status(400).json({ success: false, message: "No file uploaded" });
+      }
+
+      const updatedUser = await authService.updateAvatar(userId, file.path);
+
+      return res.status(200).json({
+        success: true,
+        message: "Avatar updated successfully",
+        responseObject: {
+          id: updatedUser.id,
+          name: updatedUser.name,
+          email: updatedUser.email,
+          avatarUrl: updatedUser.avatarUrl,
+          bio: updatedUser.bio,
+        },
+      });
+    } catch (error: any) {
+      return res.status(400).json({ success: false, message: error.message });
     }
   }
 }

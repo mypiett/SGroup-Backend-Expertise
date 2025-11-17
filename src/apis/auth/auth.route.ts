@@ -1,6 +1,8 @@
-import { Router } from 'express';
-import { AuthController } from './auth.controller';
-
+// backend/src/apis/auth/auth.route.ts
+import { Router } from "express";
+import { AuthController } from "./auth.controller";
+import authenticateJWT from "../../common/middleware/authentication";
+import { uploadAvatar } from "../../common/middleware/upload.middleware";
 const route = Router();
 
 /**
@@ -78,5 +80,13 @@ route.post('/refreshToken', (req, res) =>
 route.get('/me', (req, res) => AuthController.getMe(req, res));
 
 route.post('/logout', (req, res) => AuthController.logout(req, res));
+
+// ✅ Update profile by :id
+route.put("/:id/profile", authenticateJWT, (req, res) => AuthController.updateProfile(req, res));
+
+
+// ✅ Update avatar by :id
+route.post("/:id/avatar", authenticateJWT, uploadAvatar.single("avatar"), (req, res) => AuthController.updateAvatar(req, res));
+
 
 export default route;

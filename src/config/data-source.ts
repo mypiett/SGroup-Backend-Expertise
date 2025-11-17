@@ -49,5 +49,3 @@ export const AppDataSource = new DataSource({
     ? { rejectUnauthorized: false }
     : false,
 });
-console.log('DB_USERNAME:', process.env.DB_USERNAME);
-console.log('DB_PASSWORD:', process.env.DB_PASSWORD);

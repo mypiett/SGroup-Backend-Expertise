@@ -23,8 +23,7 @@ app.use(
 );
 app.use(cookieParser());
 
-// ✅ Sửa tại đây
-app.use('/api', AppRoute);
+app.use('', AppRoute);
 
 AppDataSource.initialize()
   .then(() => {

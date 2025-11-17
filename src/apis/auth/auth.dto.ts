@@ -1,3 +1,4 @@
+// backend/src/apis/auth/auth.dto.ts
 import { IsEmail, IsNotEmpty, IsString, MinLength } from 'class-validator';
 
 export class RegisterDto {
