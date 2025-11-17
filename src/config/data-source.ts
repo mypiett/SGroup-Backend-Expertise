@@ -24,7 +24,7 @@ export const AppDataSource = new DataSource({
   username: process.env.DB_USERNAME ?? 'postgres',
   password: process.env.DB_PASSWORD ?? '',
   database: process.env.DB_NAME ?? 'postgres',
-  synchronize: true, // chỉ bật trong dev, không nên bật ở production
+  synchronize: true, 
   logging: false,
   entities: [
     User,
@@ -48,3 +48,4 @@ export const AppDataSource = new DataSource({
     ? { rejectUnauthorized: false }
     : false,
 });
+
