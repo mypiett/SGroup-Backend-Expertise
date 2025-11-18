@@ -57,4 +57,33 @@ export class UserController {
       );
     }
   }
+
+  static async updateProfile(req: Request, res: Response) {
+    try {
+      const userId = req.params.id;
+      const data = req.body;
+
+      const updatedUser = await userService.updateProfile(userId, data);
+      res.status(200).json({ success: true, message: 'Profile updated', data: updatedUser });
+    } catch (error: any) {
+      res.status(400).json({ success: false, message: error.message });
+    }
+  }
+
+  static async uploadAvatar(req: Request, res: Response) {
+    try {
+      const userId = req.params.id;
+      const file = req.file; 
+
+      if (!file) {
+        return res.status(400).json({ success: false, message: 'No file uploaded' });
+      }
+
+      const updatedUser = await userService.updateAvatar(userId, file.path);
+      res.status(200).json({ success: true, message: 'Avatar updated', data: updatedUser });
+    } catch (error: any) {
+      res.status(400).json({ success: false, message: error.message });
+    }
+  }
 }
+

@@ -1,4 +1,3 @@
-import { validateEmail } from '@/common/utils/validateEmail';
 import { LoginDto, RegisterDto } from './auth.dto';
 import { AuthService } from './auth.service';
 import { Request, Response } from 'express';
@@ -16,6 +15,7 @@ import { StatusCodes } from 'http-status-codes';
 export class AuthController {
   static async register(req: Request): Promise<ServiceResponse<any>> {
     const data: RegisterDto = req.body;
+
     if (!data.name || !data.email || !data.password) {
       return new ServiceResponse(
         ResponseStatus.Failed,
@@ -32,6 +32,11 @@ export class AuthController {
         StatusCodes.BAD_REQUEST
       );
     }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(data.email)) {
+      return res.status(400).json({ success: false, message: 'Invalid email format' });
+      }
 
     const checkedVerifyEmail = await redisClient.get(`verified:${data.email}`);
     if (!checkedVerifyEmail) {
@@ -75,6 +80,7 @@ export class AuthController {
     res: Response
   ): Promise<ServiceResponse<any>> {
     const data: LoginDto = req.body;
+
     if (!data.email || !data.password) {
       return new ServiceResponse(
         ResponseStatus.Failed,
@@ -96,12 +102,13 @@ export class AuthController {
       const ip = req.ip || req.socket.remoteAddress;
 
       const result = await authService.login(data, userAgent, ip);
+      const user = await authService.getMe(result.userId); // lấy lại user đầy đủ
 
       res.cookie('refreshToken', result.refreshToken, {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'lax',
-        maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+        maxAge: 7 * 24 * 60 * 60 * 1000,
       });
 
       return new ServiceResponse(
@@ -258,6 +265,7 @@ export class AuthController {
   static async getMe(req: Request): Promise<ServiceResponse<any>> {
     try {
       const authHeader = req.headers.authorization;
+
       if (!authHeader) {
         return new ServiceResponse(
           ResponseStatus.Failed,
@@ -322,4 +330,56 @@ export class AuthController {
       );
     }
   }
+
+  static async updateProfile(req: Request, res: Response) {
+    try {
+      const userId = req.params.id;
+      const { name, bio } = req.body;
+
+      const updatedUser = await authService.updateProfile(userId, { name, bio });
+
+      return res.status(200).json({
+        success: true,
+        message: "Profile updated successfully",
+        responseObject: {
+          id: updatedUser.id,
+          name: updatedUser.name,
+          email: updatedUser.email,
+          avatarUrl: updatedUser.avatarUrl,
+          bio: updatedUser.bio,
+        },
+      });
+    } catch (error: any) {
+      return res.status(400).json({ success: false, message: error.message });
+    }
+  }
+  
+  static async updateAvatar(req: Request, res: Response) {
+    try {
+      const userId = req.params.id;
+      const file = req.file;
+
+      if (!file) {
+        return res.status(400).json({ success: false, message: "No file uploaded" });
+      }
+
+      const updatedUser = await authService.updateAvatar(userId, file.path);
+
+      return res.status(200).json({
+        success: true,
+        message: "Avatar updated successfully",
+        responseObject: {
+          id: updatedUser.id,
+          name: updatedUser.name,
+          email: updatedUser.email,
+          avatarUrl: updatedUser.avatarUrl,
+          bio: updatedUser.bio,
+        },
+      });
+    } catch (error: any) {
+      return res.status(400).json({ success: false, message: error.message });
+    }
+  }
 }
+
+

@@ -5,7 +5,7 @@ export class UserService {
   private userRepository = AppDataSource.getRepository(User);
 
   async getAllUsers(): Promise<User[]> {
-    const users = await this.userRepository.find({
+    return await this.userRepository.find({
       select: [
         'id',
         'email',
@@ -17,11 +17,10 @@ export class UserService {
         'updatedAt',
       ],
     });
-    return users;
   }
 
   async getDetailUser(userId: string): Promise<User | null> {
-    const user = await this.userRepository.findOne({
+    return await this.userRepository.findOne({
       where: { id: userId },
       select: [
         'id',
@@ -34,6 +33,22 @@ export class UserService {
         'updatedAt',
       ],
     });
-    return user;
+  }
+
+  async updateProfile(userId: string, data: Partial<User>): Promise<User> {
+    const user = await this.userRepository.findOneBy({ id: userId });
+    if (!user) throw new Error('User not found');
+
+    Object.assign(user, data);
+    return await this.userRepository.save(user);
+  }
+  
+  async updateAvatar(userId: string, avatarPath: string): Promise<User> {
+    const user = await this.userRepository.findOneBy({ id: userId });
+    if (!user) throw new Error('User not found');
+
+    user.avatarUrl = avatarPath;
+    return await this.userRepository.save(user);
   }
 }
+

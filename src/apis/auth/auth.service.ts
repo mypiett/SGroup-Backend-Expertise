@@ -5,6 +5,8 @@ import { LoginDto, RegisterDto } from './auth.dto';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import { generateJwt } from '../../common/utils/jwtUtils';
+import { UserService } from "../users/user.service";
+const userService = new UserService();
 import axios from 'axios';
 import { EmailService } from './mail.service';
 import { redisClient } from '@/config/redisClient';
@@ -249,4 +251,13 @@ export class AuthService {
   private generateJti(): string {
     return `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
   }
+
+  async updateProfile(userId: string, data: { name?: string; bio?: string }) {
+    return await userService.updateProfile(userId, data);
+  }
+
+  async updateAvatar(userId: string, avatarPath: string) {
+    return await userService.updateAvatar(userId, avatarPath);
+  }
 }
+

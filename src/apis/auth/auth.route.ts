@@ -74,29 +74,7 @@ route.get('/verify-email', emailController.verifyEmail.bind(emailController));
  *     tags:
  *       - Auth
  *     summary: Register a new user
- *     description: Create a new user account with name, email, and password.
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - name
- *               - email
- *               - password
- *             properties:
- *               name:
- *                 type: string
- *                 example: Thanh Tuyen
- *               email:
- *                 type: string
- *                 format: email
- *                 example: p.etitett04@gmail.com
- *               password:
- *                 type: string
- *                 format: password
- *                 example: "12345678"
+ *     description: Create a new user account with fullName, email, and password
  *     responses:
  *       201:
  *         description: Register successfully
@@ -132,24 +110,8 @@ route.post('/register', async (req, res) => {
  *   post:
  *     tags:
  *       - Auth
- *     summary: Login user with email and password
- *     description: Login using email and password, returns access token and sets refresh token cookie
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - email
- *               - password
- *             properties:
- *               email:
- *                 type: string
- *                 example: user@example.com
- *               password:
- *                 type: string
- *                 example: password123
+ *     summary: Login user
+ *     description: Login with email and password
  *     responses:
  *       200:
  *         description: Login successful
