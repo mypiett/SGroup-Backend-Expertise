@@ -58,32 +58,65 @@ export class UserController {
     }
   }
 
-  static async updateProfile(req: Request, res: Response) {
-    try {
-      const userId = req.params.id;
-      const data = req.body;
+static async updateProfile(req: Request, res: Response) {
+  try {
+    const userId = req.params.id;
+    const { name, bio } = req.body;
 
-      const updatedUser = await userService.updateProfile(userId, data);
-      res.status(200).json({ success: true, message: 'Profile updated', data: updatedUser });
-    } catch (error: any) {
-      res.status(400).json({ success: false, message: error.message });
+    if (name && typeof name !== 'string') {
+      return res.status(400).json({ success: false, message: 'Invalid name format' });
     }
-  }
-
-  static async uploadAvatar(req: Request, res: Response) {
-    try {
-      const userId = req.params.id;
-      const file = req.file; 
-
-      if (!file) {
-        return res.status(400).json({ success: false, message: 'No file uploaded' });
-      }
-
-      const updatedUser = await userService.updateAvatar(userId, file.path);
-      res.status(200).json({ success: true, message: 'Avatar updated', data: updatedUser });
-    } catch (error: any) {
-      res.status(400).json({ success: false, message: error.message });
+    if (bio && typeof bio !== 'string') {
+      return res.status(400).json({ success: false, message: 'Invalid bio format' });
     }
+
+    const updatedUser = await userService.updateProfile(userId, { name, bio });
+
+    return res.status(200).json({
+      success: true,
+      message: 'Profile updated successfully',
+      data: {
+        id: updatedUser.id,
+        name: updatedUser.name,
+        email: updatedUser.email,
+        avatarUrl: updatedUser.avatarUrl,
+        bio: updatedUser.bio,
+      },
+    });
+  } catch (error: any) {
+    return res.status(400).json({ success: false, message: error.message });
   }
 }
+
+static async uploadAvatar(req: Request, res: Response) {
+  try {
+    const userId = req.params.id;
+    const file = req.file;
+
+    if (!file) {
+      return res.status(400).json({ success: false, message: 'No file uploaded' });
+    }
+
+    const allowedTypes = ['image/jpeg', 'image/png'];
+    if (!allowedTypes.includes(file.mimetype)) {
+      return res.status(400).json({ success: false, message: 'Invalid file type' });
+    }
+
+    const updatedUser = await userService.updateAvatar(userId, file.path);
+
+    return res.status(200).json({
+      success: true,
+      message: 'Avatar updated successfully',
+      data: {
+        id: updatedUser.id,
+        name: updatedUser.name,
+        avatarUrl: updatedUser.avatarUrl,
+      },
+    });
+  } catch (error: any) {
+    return res.status(400).json({ success: false, message: error.message });
+  }
+}
+
+
 
