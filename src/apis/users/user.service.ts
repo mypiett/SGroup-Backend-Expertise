@@ -35,7 +35,7 @@ export class UserService {
     });
   }
 
-async updateProfile(
+  async updateProfile(
     userId: string,
     data: { name?: string; bio?: string }
   ): Promise<Partial<User>> {
@@ -63,6 +63,10 @@ async updateProfile(
   async updateAvatar(userId: string, avatarPath: string): Promise<Partial<User>> {
     const user = await this.userRepository.findOneBy({ id: userId });
     if (!user) throw new Error('User not found');
+    if (!avatarPath || typeof avatarPath !== 'string') {
+      throw new Error('Invalid avatar path');
+    }
+
     user.avatarUrl = avatarPath;
 
     const savedUser = await this.userRepository.save(user);
@@ -73,5 +77,3 @@ async updateProfile(
     };
   }
 }
-
-
