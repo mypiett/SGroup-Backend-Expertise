@@ -12,6 +12,11 @@ import {
 } from '@/common/models/serviceResponse';
 import { StatusCodes } from 'http-status-codes';
 
+const validateEmail = (email: string): boolean => {
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  return emailRegex.test(email);
+};
+
 export class AuthController {
   static async register(req: Request): Promise<ServiceResponse<any>> {
     const data: RegisterDto = req.body;
@@ -24,6 +29,7 @@ export class AuthController {
         StatusCodes.BAD_REQUEST
       );
     }
+
     if (!validateEmail(data.email)) {
       return new ServiceResponse(
         ResponseStatus.Failed,
@@ -32,11 +38,6 @@ export class AuthController {
         StatusCodes.BAD_REQUEST
       );
     }
-
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(data.email)) {
-      return res.status(400).json({ success: false, message: 'Invalid email format' });
-      }
 
     const checkedVerifyEmail = await redisClient.get(`verified:${data.email}`);
     if (!checkedVerifyEmail) {
@@ -89,6 +90,7 @@ export class AuthController {
         StatusCodes.BAD_REQUEST
       );
     }
+
     if (!validateEmail(data.email)) {
       return new ServiceResponse(
         ResponseStatus.Failed,
@@ -97,12 +99,13 @@ export class AuthController {
         StatusCodes.BAD_REQUEST
       );
     }
+
     try {
       const userAgent = req.headers['user-agent'];
       const ip = req.ip || req.socket.remoteAddress;
 
       const result = await authService.login(data, userAgent, ip);
-      const user = await authService.getMe(result.userId); // lấy lại user đầy đủ
+      const user = await authService.getMe(result.userId); 
 
       res.cookie('refreshToken', result.refreshToken, {
         httpOnly: true,
@@ -381,5 +384,3 @@ export class AuthController {
     }
   }
 }
-
-
