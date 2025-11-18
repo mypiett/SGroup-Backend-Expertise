@@ -35,20 +35,43 @@ export class UserService {
     });
   }
 
-  async updateProfile(userId: string, data: Partial<User>): Promise<User> {
+async updateProfile(
+    userId: string,
+    data: { name?: string; bio?: string }
+  ): Promise<Partial<User>> {
     const user = await this.userRepository.findOneBy({ id: userId });
     if (!user) throw new Error('User not found');
 
-    Object.assign(user, data);
-    return await this.userRepository.save(user);
+    if (data.name && typeof data.name === 'string') {
+      user.name = data.name.trim();
+    }
+    if (data.bio && typeof data.bio === 'string') {
+      user.bio = data.bio;
+    }
+
+    const savedUser = await this.userRepository.save(user);
+
+    return {
+      id: savedUser.id,
+      name: savedUser.name,
+      email: savedUser.email,
+      avatarUrl: savedUser.avatarUrl,
+      bio: savedUser.bio,
+    };
   }
-  
-  async updateAvatar(userId: string, avatarPath: string): Promise<User> {
+
+  async updateAvatar(userId: string, avatarPath: string): Promise<Partial<User>> {
     const user = await this.userRepository.findOneBy({ id: userId });
     if (!user) throw new Error('User not found');
-
     user.avatarUrl = avatarPath;
-    return await this.userRepository.save(user);
+
+    const savedUser = await this.userRepository.save(user);
+    return {
+      id: savedUser.id,
+      name: savedUser.name,
+      avatarUrl: savedUser.avatarUrl,
+    };
   }
 }
+
 
