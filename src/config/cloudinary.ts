@@ -33,10 +33,4 @@ export const uploadAvatarToCloudinary = (
     });
 };
 
-// console.log('Cloudinary config:', {
-//     cloudName: process.env.CLOUDINARY_CLOUD_NAME,
-//     apiKey: process.env.CLOUDINARY_API_KEY ? 'OK' : 'MISSING',
-// });
-
-
 export default cloudinary;
