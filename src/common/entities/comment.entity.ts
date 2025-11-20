@@ -1,3 +1,4 @@
+//backend/src/common/entities/comment.entity.ts
 import { Column, Entity, ManyToOne, PrimaryGeneratedColumn } from 'typeorm';
 
 import { DateTimeEntity } from './base/dateTimeEntity';

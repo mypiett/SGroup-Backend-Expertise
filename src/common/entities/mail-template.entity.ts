@@ -1,3 +1,4 @@
+//backend/src/common/entities/mail-template.entity.ts
 import { Column, Entity, PrimaryGeneratedColumn } from 'typeorm';
 
 import { DateTimeEntity } from './base/dateTimeEntity';

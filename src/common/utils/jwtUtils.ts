@@ -1,3 +1,4 @@
+//backend/src/common/utils/jwtUtils.ts
 import jwt, { Secret, SignOptions } from 'jsonwebtoken';
 
 const JWT_SECRET: Secret =

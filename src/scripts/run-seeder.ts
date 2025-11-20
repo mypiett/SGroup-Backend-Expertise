@@ -1,5 +1,4 @@
 #!/usr/bin/env tsx
-
 import 'reflect-metadata';
 
 import { config } from 'dotenv';

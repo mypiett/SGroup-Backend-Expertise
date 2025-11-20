@@ -1,5 +1,6 @@
+//backend/src/common/types/express.d.ts
 import { Request } from 'express';
-
+import type { File as MulterFile } from 'multer';
 // Extend Express Request type để có type-safety cho authenticated requests
 declare global {
   namespace Express {
@@ -9,6 +10,9 @@ declare global {
         email: string;
         [key: string]: any;
       };
+
+      file?: MulterFile;
+      files?: MulterFile[] | { [fieldname: string]: MulterFile[] };
     }
   }
 }
@@ -21,3 +25,4 @@ export interface AuthenticatedRequest extends Request {
     [key: string]: any;
   };
 }
+

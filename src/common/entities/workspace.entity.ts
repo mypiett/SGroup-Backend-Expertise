@@ -1,3 +1,4 @@
+//backend/src/common/entities/workspace.entity.ts
 import {
   Column,
   Entity,

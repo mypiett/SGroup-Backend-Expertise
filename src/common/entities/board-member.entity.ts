@@ -1,3 +1,4 @@
+//backend/src/common/entities/board-member.entity.ts
 import {
   Column,
   Entity,
