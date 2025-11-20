@@ -1,0 +1,42 @@
+import { v2 as cloudinary } from 'cloudinary';
+import dotenv from 'dotenv';
+
+dotenv.config();
+
+cloudinary.config({
+    cloud_name: process.env.CLOUDINARY_CLOUD_NAME || '',
+    api_key: process.env.CLOUDINARY_API_KEY || '',
+    api_secret: process.env.CLOUDINARY_API_SECRET || '',
+});
+
+export const uploadAvatarToCloudinary = (
+    file: Express.Multer.File
+): Promise<string> => {
+    return new Promise((resolve, reject) => {
+        if (!file || !file.buffer) {
+            return reject(new Error('No file buffer'));
+        }
+
+        const uploadStream = cloudinary.uploader.upload_stream(
+            {
+                folder: 'trello-assk/avatars',
+                resource_type: 'image',
+            },
+            (error, result) => {
+                if (error || !result) {
+                    return reject(error || new Error('Upload failed'));
+                }
+                resolve(result.secure_url);
+            }
+        );
+        uploadStream.end(file.buffer);
+    });
+};
+
+// console.log('Cloudinary config:', {
+//     cloudName: process.env.CLOUDINARY_CLOUD_NAME,
+//     apiKey: process.env.CLOUDINARY_API_KEY ? 'OK' : 'MISSING',
+// });
+
+
+export default cloudinary;

@@ -1,31 +1,35 @@
 import { Router } from 'express';
 import { UserController } from './users.controller';
 import { handleServiceResponse } from '@/common/utils/httpHandlers';
+import authenticateJWT from '@/common/middleware/authentication';
+import { avatarUpload } from '@/config/multer';
+import { ServiceResponse, ResponseStatus } from '@/common/models/serviceResponse';
+import { StatusCodes } from 'http-status-codes';
 
 const route = Router();
 
 /**
  * @swagger
- * /api/users:
+ * /users:
  *   get:
  *     tags:
  *       - Users
  *     summary: Get all users
- *     description: Get all user
+ *     description: Get all users
  *     responses:
  *       200:
  *         description: Get data user successfully
  *       500:
  *         description: Server Error
  */
-route.route('/').get(async (req, res) => {
+route.get('/', async (_req, res) => {
   const serviceResponse = await UserController.getAllUsers();
   return handleServiceResponse(serviceResponse, res);
 });
 
 /**
  * @swagger
- * /api/users/{id}:
+ * /users/{id}:
  *   get:
  *     tags:
  *       - Users
@@ -46,9 +50,101 @@ route.route('/').get(async (req, res) => {
  *       500:
  *         description: Server Error
  */
-route.route('/:id').get(async (req, res) => {
+route.get('/:id', async (req, res) => {
   const serviceResponse = await UserController.getDetailUser(req);
   return handleServiceResponse(serviceResponse, res);
 });
+
+/**
+ * @swagger
+ * /users/me:
+ *   get:
+ *     tags:
+ *       - Users
+ *     summary: Get current user profile
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Current user profile
+ *       401:
+ *         description: Unauthorized
+ */
+route.get('/me', authenticateJWT, async (req, res) => {
+  const serviceResponse = await UserController.getMe(req);
+  return handleServiceResponse(serviceResponse, res);
+});
+
+/**
+ * @swagger
+ * /users/me/profile:
+ *   patch:
+ *     tags:
+ *       - Users
+ *     summary: Update current user profile
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               name:
+ *                 type: string
+ *               bio:
+ *                 type: string
+ *               avatarUrl:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Profile updated successfully
+ *       400:
+ *         description: Invalid input
+ *       401:
+ *         description: Unauthorized
+ */
+route.patch('/me/profile', authenticateJWT, async (req, res) => {
+  const serviceResponse = await UserController.updateProfile(req);
+  return handleServiceResponse(serviceResponse, res);
+});
+
+/**
+ * @swagger
+ * /users/me/avatar:
+ *   patch:
+ *     tags:
+ *       - Users
+ *     summary: Upload or change avatar
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               avatar:
+ *                 type: string
+ *                 format: binary
+ *     responses:
+ *       200:
+ *         description: Avatar updated successfully
+ *       400:
+ *         description: File invalid or missing
+ *       401:
+ *         description: Unauthorized
+ */
+route.patch(
+  '/me/avatar',
+  authenticateJWT,
+  avatarUpload.single('avatar'),
+  async (req, res) => {
+    const serviceResponse = await UserController.uploadAvatarToCloudinary(req);
+    return handleServiceResponse(serviceResponse, res);
+  }
+);
 
 export default route;
