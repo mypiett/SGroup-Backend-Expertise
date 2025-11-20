@@ -61,7 +61,6 @@ export class UserController {
     }
   }
 
-  // ⭐ Lấy profile của user đang đăng nhập
   static async getMe(req: Request): Promise<ServiceResponse<any>> {
     try {
       const userId = req.user?.userId;
@@ -102,7 +101,6 @@ export class UserController {
     }
   }
 
-  // ⭐ Update thông tin cá nhân (name, bio,…)
   static async updateProfile(req: Request): Promise<ServiceResponse<any>> {
     try {
       const userId = req.user?.userId;
@@ -135,7 +133,6 @@ export class UserController {
     }
   }
 
-  // ⭐ Method xử lý việc upload avatar lên Cloudinary (dùng buffer + stream)
   static async uploadAvatarToCloudinary(
     req: Request
   ): Promise<ServiceResponse<any>> {
@@ -160,7 +157,6 @@ export class UserController {
         );
       }
 
-      // 🧠 Dùng Promise + upload_stream vì mình đang dùng memoryStorage (buffer)
       const uploadResult: any = await new Promise((resolve, reject) => {
         const stream = cloudinary.uploader.upload_stream(
           {
@@ -176,7 +172,6 @@ export class UserController {
           }
         );
 
-        // Gửi buffer lên Cloudinary
         stream.end(req.file.buffer);
       });
 
@@ -202,7 +197,6 @@ export class UserController {
   }
 
 
-  // ⭐ Method để cập nhật thông tin avatar (chỉ lưu URL trong DB)
   static async updateAvatar(req: Request): Promise<ServiceResponse<any>> {
     try {
       const userId = req.user?.userId;
