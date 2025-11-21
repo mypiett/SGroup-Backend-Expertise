@@ -3,8 +3,8 @@ import { UserController } from './users.controller';
 import { handleServiceResponse } from '@/common/utils/httpHandlers';
 import authenticateJWT from '@/common/middleware/authentication';
 import { avatarUpload } from '@/config/multer';
-import { ServiceResponse, ResponseStatus } from '@/common/models/serviceResponse';
-import { StatusCodes } from 'http-status-codes';
+// import { ServiceResponse, ResponseStatus } from '@/common/models/serviceResponse';
+// import { StatusCodes } from 'http-status-codes';
 
 const route = Router();
 

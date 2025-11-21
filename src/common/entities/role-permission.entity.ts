@@ -1,4 +1,3 @@
-//backend/src/common/entities/role-permission.entity.ts
 import {
   Column,
   Entity,

@@ -1,4 +1,3 @@
-//backend/src/common/entities/notification.entity.ts
 import { Column, Entity, ManyToOne, PrimaryGeneratedColumn } from 'typeorm';
 
 import { DateTimeEntity } from './base/dateTimeEntity';

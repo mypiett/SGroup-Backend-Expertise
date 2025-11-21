@@ -1,4 +1,3 @@
-//backend/src/common/middleware/authentication.ts
 import { NextFunction, Request, Response } from 'express';
 import { verifyJwt } from '../utils/jwtUtils';
 
