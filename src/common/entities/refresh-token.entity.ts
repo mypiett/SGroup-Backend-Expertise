@@ -1,4 +1,3 @@
-//backend/src/common/entities/refresh-token.entity.ts
 import {
   Column,
   CreateDateColumn,

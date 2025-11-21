@@ -1,4 +1,3 @@
-//backend/src/common/entities/user.entity.ts
 import { Column, Entity, OneToMany, PrimaryGeneratedColumn } from 'typeorm';
 
 import { DateTimeEntity } from './base/dateTimeEntity';

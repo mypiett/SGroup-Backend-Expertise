@@ -1,4 +1,3 @@
-//backend/src/common/entities/card.entity.ts
 import {
   Column,
   Entity,

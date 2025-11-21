@@ -1,4 +1,3 @@
-//backend/src/common/types/express.d.ts
 import { Request } from 'express';
 import type { File as MulterFile } from 'multer';
 // Extend Express Request type để có type-safety cho authenticated requests

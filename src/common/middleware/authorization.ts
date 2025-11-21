@@ -1,4 +1,3 @@
-//backend/src/common/middleware/authorization.ts
 import { NextFunction, Request, Response } from 'express';
 import { RbacProvider } from '@/common/utils/rbac';
 
