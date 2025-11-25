@@ -1,7 +1,12 @@
+import { User } from '@/common/entities/user.entity';
 import { Board } from '../../common/entities/board.entity';
 import { Workspace } from '../../common/entities/workspace.entity';
 import { AppDataSource } from '../../config/data-source';
-import { CreateBoardDto, UpdateBoardDto } from './board.dto';
+import { AddBoardMemberDto, CreateBoardDto, UpdateBoardDto } from './board.dto';
+import { Role } from '@/common/entities/role.entity';
+import { BoardMembers } from '@/common/entities/board-member.entity';
+import { ROLES } from '@/common/constants/roles';
+import { EmailService } from '../mail/mail.service';
 
 import { BoardMembers } from '../../common/entities/board-member.entity';
 import { Role } from '../../common/entities/role.entity';
@@ -10,6 +15,10 @@ import { ROLES } from '@/common/constants/roles';
 export class BoardService {
   private boardRepository = AppDataSource.getRepository(Board);
   private workspaceRepository = AppDataSource.getRepository(Workspace);
+  private boardMemberRepository = AppDataSource.getRepository(BoardMembers);
+  private userRepository = AppDataSource.getRepository(User);
+  private roleRepository = AppDataSource.getRepository(Role);
+  private emailService = new EmailService();
 
   private boardMemberRepository = AppDataSource.getRepository(BoardMembers);
   private roleRepository = AppDataSource.getRepository(Role);
@@ -135,5 +144,78 @@ export class BoardService {
     board.isClosed = false;
 
     return await this.boardRepository.save(board);
+  }
+
+  async addMemberToBoard(
+    boardId: string,
+    data: AddBoardMemberDto,
+    currentUserId: string
+  ) {
+    const user = await this.userRepository.findOne({
+      where: { email: data.email },
+    });
+
+    if (!user) throw new Error('User not found');
+    const [board, currentMember, existingMember, role] = await Promise.all([
+      this.boardRepository.findOne({ where: { id: boardId } }),
+      this.boardMemberRepository.findOne({
+        where: { boardId, userId: currentUserId },
+        relations: ['role', 'user'],
+      }),
+      this.boardMemberRepository.findOne({
+        where: { boardId, userId: user?.id },
+      }),
+      this.roleRepository.findOne({ where: { id: data.roleId } }),
+    ]);
+
+    if (!board) throw new Error('Board not found');
+    if (!currentMember) throw new Error('You are not a member of this board');
+    if (
+      currentMember.role.name !== ROLES.BOARD_OWNER &&
+      currentMember.role.name !== ROLES.BOARD_ADMIN
+    ) {
+      throw new Error('Only board owner or admin can add members');
+    }
+    if (existingMember)
+      throw new Error('User is already a member of this board');
+    if (!role) throw new Error('Role not found');
+
+    const boardRoles = [
+      ROLES.BOARD_OWNER,
+      ROLES.BOARD_ADMIN,
+      ROLES.BOARD_MEMBER,
+      ROLES.BOARD_OBSERVER,
+    ];
+    if (!boardRoles.includes(role.name as any)) {
+      throw new Error('Invalid role for board member');
+    }
+
+    const newMember = this.boardMemberRepository.create({
+      boardId,
+      userId: user.id,
+      roleId: role.id,
+    });
+
+    await this.boardMemberRepository.save(newMember);
+    const savedMember = await this.boardMemberRepository.findOne({
+      where: { id: newMember.id },
+      relations: ['user', 'role', 'board'],
+    });
+    if (savedMember?.user) {
+      delete savedMember.user.password;
+    }
+
+    await this.emailService.sendBoardInvitationEmail({
+      to: user.email,
+      boardTitle: board.title,
+      inviterName: currentMember.user.name,
+      roleName: role.name,
+      link: `http://localhost:3000/boards/${board.id}`,
+    });
+
+    return {
+      message: 'Member added to board successfully',
+      member: savedMember,
+    };
   }
 }

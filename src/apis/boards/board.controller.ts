@@ -5,6 +5,7 @@ import {
   ResponseStatus,
 } from '@/common/models/serviceResponse';
 import { StatusCodes } from 'http-status-codes';
+import { AddBoardMemberDto } from './board.dto';
 
 const boardService = new BoardService();
 
@@ -137,6 +138,61 @@ export class BoardController {
         StatusCodes.OK
       );
     } catch (error: any) {
+      return new ServiceResponse(
+        ResponseStatus.Failed,
+        error.message,
+        null,
+        StatusCodes.BAD_REQUEST
+      );
+    }
+  }
+
+  static async addMemberToBoard(req: Request): Promise<ServiceResponse<any>> {
+    try {
+      const boardId = req.params.id;
+      const currentUserId = req.user?.userId;
+      const data: AddBoardMemberDto = req.body;
+
+      const result = await boardService.addMemberToBoard(
+        boardId,
+        data,
+        currentUserId
+      );
+
+      return new ServiceResponse(
+        ResponseStatus.Success,
+        result.message,
+        result,
+        StatusCodes.CREATED
+      );
+    } catch (error: any) {
+      if (
+        error.message === 'Board not found' ||
+        error.message === 'User not found' ||
+        error.message === 'Role not found'
+      ) {
+        return new ServiceResponse(
+          ResponseStatus.Failed,
+          error.message,
+          null,
+          StatusCodes.NOT_FOUND
+        );
+      }
+
+      if (
+        error.message.includes('not a board member') ||
+        error.message.includes('Only board admin') ||
+        error.message.includes('Only board owner') ||
+        error.message.includes('already a board member')
+      ) {
+        return new ServiceResponse(
+          ResponseStatus.Failed,
+          error.message,
+          null,
+          StatusCodes.FORBIDDEN
+        );
+      }
+
       return new ServiceResponse(
         ResponseStatus.Failed,
         error.message,

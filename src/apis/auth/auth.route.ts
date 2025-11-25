@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { AuthController } from './auth.controller';
-import { EmailController } from './mail.controller';
+import { EmailController } from '../mail/mail.controller';
 import { handleServiceResponse } from '@/common/utils/httpHandlers';
 
 const route = Router();

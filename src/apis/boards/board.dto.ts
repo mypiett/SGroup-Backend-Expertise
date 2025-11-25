@@ -1,3 +1,5 @@
+import { IsEmail, IsNotEmpty, IsUUID } from 'class-validator';
+
 export class CreateBoardDto {
   title: string;
   description?: string;
@@ -12,4 +14,14 @@ export class UpdateBoardDto {
   coverUrl?: string;
   isClosed?: boolean;
   visibility?: 'private' | 'public' | 'workspace';
+}
+
+export class AddBoardMemberDto {
+  @IsEmail({}, { message: 'Invalid email address' })
+  @IsNotEmpty({ message: 'Email is required' })
+  public email: string;
+
+  @IsUUID('4', { message: 'Invalid roleId' })
+  @IsNotEmpty({ message: 'Role ID is required' })
+  public roleId: string;
 }
