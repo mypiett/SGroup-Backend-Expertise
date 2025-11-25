@@ -282,38 +282,6 @@ export class BoardService {
     };
   }
 
-  async closeBoard(id: string) {
-    const board = await this.boardRepository.findOne({
-      where: { id },
-    });
-
-    if (!board) throw new Error('Board not found');
-
-    board.isClosed = true;
-    return await this.boardRepository.save(board);
-  }
-
-  async reopenBoard(id: string) {
-    const board = await this.boardRepository.findOne({
-      where: { id },
-    });
-
-    if (!board) throw new Error('Board not found');
-
-    board.isClosed = false;
-    return await this.boardRepository.save(board);
-  }
-
-  async deleteBoardPermanently(id: string) {
-    const board = await this.boardRepository.findOne({
-      where: { id },
-    });
-
-    if (!board) throw new Error('Board not found');
-
-    await this.boardRepository.remove(board);
-    return { message: 'Board deleted permanently' };
-  }
   async getBoardOwner(boardId: string) {
     const ownerRole = await this.roleRepository.findOne({
       where: { name: ROLES.BOARD_OWNER },
@@ -413,5 +381,37 @@ export class BoardService {
     return await this.boardRepository.save(board);
   }
 
+  async closeBoard(id: string) {
+    const board = await this.boardRepository.findOne({
+      where: { id },
+    });
+
+    if (!board) throw new Error('Board not found');
+
+    board.isClosed = true;
+    return await this.boardRepository.save(board);
+  }
+
+  async reopenBoard(id: string) {
+    const board = await this.boardRepository.findOne({
+      where: { id },
+    });
+
+    if (!board) throw new Error('Board not found');
+
+    board.isClosed = false;
+    return await this.boardRepository.save(board);
+  }
+
+  async deleteBoardPermanently(id: string) {
+    const board = await this.boardRepository.findOne({
+      where: { id },
+    });
+
+    if (!board) throw new Error('Board not found');
+
+    await this.boardRepository.remove(board);
+    return { message: 'Board deleted permanently' };
+  }
 
 }
