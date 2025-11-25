@@ -54,3 +54,11 @@ export class InviteMemberDto {
   @IsNotEmpty({ message: 'Role name is required' })
   roleName: string;
 }
+
+export class UpdateVisibilityDto {
+  @IsEnum(['private', 'public'], {
+    message: 'Visibility must be private or public',
+  })
+  @IsNotEmpty({ message: 'Visibility is required' })
+  visibility: 'private' | 'public';
+}
