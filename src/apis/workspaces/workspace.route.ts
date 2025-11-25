@@ -42,11 +42,11 @@ route.get('/all', async (_req, res) => {
  *           schema:
  *             type: object
  *             required:
- *               - name
+ *               - title
  *             properties:
  *               name:
  *                 type: string
- *                 example: My Workspace
+ *                 title: My Workspace
  *               description:
  *                 type: string
  *                 example: This is my workspace description
