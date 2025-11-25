@@ -3,16 +3,24 @@ import { Workspace } from '../../common/entities/workspace.entity';
 import { AppDataSource } from '../../config/data-source';
 import { CreateBoardDto, UpdateBoardDto } from './board.dto';
 
+import { BoardMembers } from '../../common/entities/board-member.entity';
+import { Role } from '../../common/entities/role.entity';
+import { ROLES } from '@/common/constants/roles';
+
 export class BoardService {
   private boardRepository = AppDataSource.getRepository(Board);
   private workspaceRepository = AppDataSource.getRepository(Workspace);
 
-  async createBoard(data: CreateBoardDto) {
+  private boardMemberRepository = AppDataSource.getRepository(BoardMembers);
+  private roleRepository = AppDataSource.getRepository(Role);
+
+  async createBoard(data: CreateBoardDto, creatorId?: string) {
     const workspace = await this.workspaceRepository.findOne({
-      where: { id: data.workspaceId },
+      // không cho tạo board trong workspace đã archive
+      where: { id: data.workspaceId, isArchived: false },
     });
 
-    if (!workspace) throw new Error('Workspace not found');
+    if (!workspace) throw new Error('Workspace not found or archived');
 
     const board = this.boardRepository.create({
       title: data.title,
@@ -23,13 +31,32 @@ export class BoardService {
       workspace,
     });
 
-    return await this.boardRepository.save(board);
+    const savedBoard = await this.boardRepository.save(board);
+    if (creatorId) {
+      const ownerRole = await this.roleRepository.findOne({
+        where: { name: ROLES.BOARD_OWNER },
+      });
+
+      if (ownerRole) {
+        const boardMember = this.boardMemberRepository.create({
+          userId: creatorId,
+          boardId: savedBoard.id,
+          roleId: ownerRole.id,
+        });
+
+        await this.boardMemberRepository.save(boardMember);
+      } else {
+        throw new Error('Owner role not found');
+      }
+    }
+
+    return savedBoard;
   }
 
   async getBoards(workspaceId: string) {
     return await this.boardRepository.find({
       where: {
-        workspace: { id: workspaceId },
+        workspace: { id: workspaceId, isArchived: false },
         isClosed: false,
       },
       relations: ['workspace'],
@@ -52,8 +79,8 @@ export class BoardService {
 
   async getBoardById(id: string) {
     const board = await this.boardRepository.findOne({
+      relations: ['workspace'],
       where: { id },
-      relations: ['workspace', 'lists', 'boardMembers'],
       select: {
         id: true,
         title: true,
