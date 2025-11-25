@@ -672,4 +672,51 @@ export class WorkspaceService {
       },
     };
   }
+
+  // Update workspace visibility
+  async updateVisibility(
+    workspaceId: string,
+    visibility: 'private' | 'public',
+    currentUserId: string
+  ) {
+    // Check workspace and current member
+    const [workspace, currentMember] = await Promise.all([
+      this.workspaceRepository.findOne({
+        where: { id: workspaceId, isArchived: false },
+      }),
+      this.workspaceMemberRepository.findOne({
+        where: { workspaceId, userId: currentUserId },
+        relations: ['role'],
+      }),
+    ]);
+
+    if (!workspace) {
+      throw new Error('Workspace not found');
+    }
+
+    if (!currentMember) {
+      throw new Error('You are not a member of this workspace');
+    }
+
+    // Only Owner (Admin) or Admin can change visibility
+    if (
+      currentMember.role.name !== ROLES.WORKSPACE_ADMIN &&
+      currentMember.role.name !== ROLES.WORKSPACE_MODERATOR
+    ) {
+      throw new Error('Only workspace owner or admin can change visibility');
+    }
+
+    // Update visibility
+    workspace.visibility = visibility;
+    await this.workspaceRepository.save(workspace);
+
+    return {
+      message: 'Workspace visibility updated successfully',
+      workspace: {
+        id: workspace.id,
+        title: workspace.title,
+        visibility: workspace.visibility,
+      },
+    };
+  }
 }

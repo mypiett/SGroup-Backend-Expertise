@@ -503,4 +503,78 @@ route.delete('/:id/members/:memberId', async (req, res) => {
   return handleServiceResponse(serviceResponse, res);
 });
 
+/**
+ * @swagger
+ * /workspaces/{id}/visibility:
+ *   patch:
+ *     tags:
+ *       - Workspace
+ *     summary: Update workspace visibility
+ *     description: Change workspace visibility between private and public. Only workspace owner or admin can perform this action.
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         description: Workspace ID
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - visibility
+ *             properties:
+ *               visibility:
+ *                 type: string
+ *                 enum: [private, public]
+ *                 example: public
+ *                 description: Workspace visibility (private or public)
+ *     responses:
+ *       200:
+ *         description: Workspace visibility updated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: success
+ *                 message:
+ *                   type: string
+ *                   example: Workspace visibility updated successfully
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     workspace:
+ *                       type: object
+ *                       properties:
+ *                         id:
+ *                           type: string
+ *                         title:
+ *                           type: string
+ *                         visibility:
+ *                           type: string
+ *                           enum: [private, public]
+ *       400:
+ *         description: Invalid visibility value
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Only workspace owner or admin can change visibility
+ *       404:
+ *         description: Workspace not found
+ *       500:
+ *         description: Server Error
+ */
+route.patch('/:id/visibility', async (req, res) => {
+  const serviceResponse = await WorkspaceController.updateVisibility(req);
+  return handleServiceResponse(serviceResponse, res);
+});
+
 export default route;

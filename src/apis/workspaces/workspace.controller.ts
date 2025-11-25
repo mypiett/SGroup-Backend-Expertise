@@ -494,4 +494,63 @@ export class WorkspaceController {
       );
     }
   }
+
+  // Update workspace visibility
+  static async updateVisibility(req: Request): Promise<ServiceResponse<any>> {
+    try {
+      const workspaceId = req.params.id;
+      const currentUserId = req.user?.userId;
+      const { visibility } = req.body;
+
+      if (
+        !visibility ||
+        (visibility !== 'private' && visibility !== 'public')
+      ) {
+        return new ServiceResponse(
+          ResponseStatus.Failed,
+          'Visibility must be private or public',
+          null,
+          StatusCodes.BAD_REQUEST
+        );
+      }
+
+      const result = await workspaceService.updateVisibility(
+        workspaceId,
+        visibility,
+        currentUserId
+      );
+      return new ServiceResponse(
+        ResponseStatus.Success,
+        result.message,
+        result,
+        StatusCodes.OK
+      );
+    } catch (error) {
+      if (error.message === 'Workspace not found') {
+        return new ServiceResponse(
+          ResponseStatus.Failed,
+          error.message,
+          null,
+          StatusCodes.NOT_FOUND
+        );
+      }
+      if (
+        error.message.includes('not a member') ||
+        error.message.includes('Only workspace owner')
+      ) {
+        return new ServiceResponse(
+          ResponseStatus.Failed,
+          error.message,
+          null,
+          StatusCodes.FORBIDDEN
+        );
+      }
+      return new ServiceResponse(
+        ResponseStatus.Failed,
+        error.message,
+        null,
+        StatusCodes.BAD_REQUEST
+      );
+    }
+  }
 }
