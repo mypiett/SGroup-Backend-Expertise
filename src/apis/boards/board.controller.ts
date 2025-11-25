@@ -11,7 +11,17 @@ const boardService = new BoardService();
 export class BoardController {
   static async create(req: Request): Promise<ServiceResponse<any>> {
     try {
-      const board = await boardService.createBoard(req.body);
+      const { title, workspaceId } = req.body;
+      if (!title || !workspaceId) { //thêm validate
+        return new ServiceResponse(
+          ResponseStatus.Failed,
+          'Title and workspaceId are required',
+          null,
+          StatusCodes.BAD_REQUEST
+        );
+      }
+      const creatorId = req.user?.userId;
+      const board = await boardService.createBoard(req.body, creatorId);
       return new ServiceResponse(
         ResponseStatus.Success,
         'Board created successfully',
@@ -28,9 +38,20 @@ export class BoardController {
     }
   }
 
+
   static async findAll(req: Request): Promise<ServiceResponse<any>> {
     try {
-      const workspaceId = req.params.workspaceId;
+      const workspaceId = req.query.workspaceId as string | undefined; //lấy từ query thay vì params, call kiểu GET /boards?workspaceId=...
+
+      if (!workspaceId) {
+        return new ServiceResponse(
+          ResponseStatus.Failed,
+          'workspaceId query param is required',
+          null,
+          StatusCodes.BAD_REQUEST
+        );
+      }
+
       const boards = await boardService.getBoards(workspaceId);
       return new ServiceResponse(
         ResponseStatus.Success,
@@ -47,6 +68,7 @@ export class BoardController {
       );
     }
   }
+
 
   static async findOne(req: Request): Promise<ServiceResponse<any>> {
     try {

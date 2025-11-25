@@ -32,7 +32,12 @@ export function requireWorkspacePermissions(
         return res.status(401).json({ message: 'Unauthorized' });
 
       const userId = authReq.user.userId;
-      const workspaceId = req.params.id || req.body.id;
+      const workspaceId =
+        (req.params as any).workspaceId ||
+        req.params.id ||
+        (req.body as any).workspaceId ||
+        req.body.id ||
+        (req.query as any).workspaceId;
 
       if (!workspaceId) {
         return res.status(400).json({ message: 'Workspace ID required' });
@@ -81,7 +86,11 @@ export function requireBoardPermissions(
         return res.status(401).json({ message: 'Unauthorized' });
 
       const userId = authReq.user.userId;
-      const boardId = req.params.boardId || req.body.boardId;
+      const boardId =
+        (req.params as any).boardId ||
+        req.params.id ||
+        (req.body as any).boardId ||
+        (req.query as any).boardId;
 
       if (!boardId) {
         return res.status(400).json({ message: 'Board ID required' });

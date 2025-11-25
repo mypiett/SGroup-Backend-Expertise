@@ -1,8 +1,8 @@
-//backend/src/common/utils/rbac.ts
 import { BoardMembers } from '@/common/entities/board-member.entity';
 import { CardMembers } from '@/common/entities/card-members.entity';
 import { WorkspaceMembers } from '@/common/entities/workspace-member.entity';
 import { AppDataSource } from '@/config/data-source';
+import { Board } from '@/common/entities/board.entity'; 
 
 export class RbacProvider {
   // Lấy roles của user trong workspace
@@ -93,7 +93,24 @@ export class RbacProvider {
       )
     );
 
-    return Array.from(new Set(permissions));
+    // Gộp thêm permissions từ workspace chứa board (nếu user có join workspace)
+    let workspacePermissions: string[] = [];
+
+    const board = await AppDataSource.getRepository(Board).findOne({
+      where: { id: boardId },
+      relations: ['workspace'],
+    });
+
+    if (board?.workspace?.id) {
+      workspacePermissions = await this.getUserPermissionsInWorkspace(
+        userId,
+        board.workspace.id
+      );
+    }
+
+    const allPermissions = [...permissions, ...workspacePermissions];
+
+    return Array.from(new Set(allPermissions));
   }
 
   // Lấy permissions trong card
