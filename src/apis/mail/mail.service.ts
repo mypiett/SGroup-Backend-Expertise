@@ -1,6 +1,13 @@
 import { redisClient } from '@/config/redisClient';
 import nodemailer from 'nodemailer';
 import { v4 as uuidv4 } from 'uuid';
+interface BoardInvitationEmailOptions {
+  to: string;
+  boardTitle: string;
+  inviterName: string;
+  roleName: string;
+  link?: string;
+}
 
 export class EmailService {
   private transporter;
@@ -53,6 +60,23 @@ export class EmailService {
         <p>Use the following code to reset your password. It is valid for 15 minutes:</p>
         <h2 style="color: #333;">${code}</h2>
         <p>If you did not request this, please ignore this email.</p>
+      `,
+    });
+  }
+
+  async sendBoardInvitationEmail(options: BoardInvitationEmailOptions) {
+    const { to, boardTitle, inviterName, roleName, link } = options;
+
+    const boardLink = link || 'http://localhost:3000/boards';
+
+    await this.transporter.sendMail({
+      from: `"TrelloClone" <${process.env.SMTP_USER}>`,
+      to,
+      subject: `You were added to board "${boardTitle}"`,
+      html: `
+        <h3>Hello!</h3>
+        <p>${inviterName} has added you to the board "<b>${boardTitle}</b>" as <b>${roleName}</b>.</p>
+        <p>Click <a href="${boardLink}">here</a> to access the board.</p>
       `,
     });
   }

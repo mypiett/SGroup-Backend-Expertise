@@ -189,7 +189,6 @@ route.put(
   }
 );
 
-
 /**
  * @swagger
  * /boards/{id}:
@@ -253,5 +252,72 @@ route.patch(
   }
 );
 
+/**
+ * @swagger
+ * /boards/{id}/invite:
+ *   post:
+ *     tags:
+ *       - Boards
+ *     summary: Invite a user to a board
+ *     description: Add a member to a board and send an email notification. Only board owner or admin can invite.
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: ID of the board
+ *         example: "board-id-123"
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/AddBoardMemberDto'
+ *     responses:
+ *       201:
+ *         description: Member added successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "Member added to board successfully"
+ *                 member:
+ *                   type: object
+ *                   properties:
+ *                     id:
+ *                       type: string
+ *                     boardId:
+ *                       type: string
+ *                     user:
+ *                       type: object
+ *                       properties:
+ *                         id:
+ *                           type: string
+ *                         name:
+ *                           type: string
+ *                         email:
+ *                           type: string
+ *                     role:
+ *                       type: object
+ *                       properties:
+ *                         id:
+ *                           type: string
+ *                         name:
+ *                           type: string
+ *       400:
+ *         description: Bad request (missing email or invalid role)
+ *       403:
+ *         description: Forbidden (not owner/admin or user already a member)
+ *       404:
+ *         description: Board, user, or role not found
+ */
+route.post('/:id/invite', async (req, res) => {
+  const serviceResponse = await BoardController.addMemberToBoard(req);
+  return handleServiceResponse(serviceResponse, res);
+});
 
 export default route;

@@ -6,7 +6,7 @@ import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import { generateJwt } from '../../common/utils/jwtUtils';
 import axios from 'axios';
-import { EmailService } from './mail.service';
+import { EmailService } from '../mail/mail.service';
 import { redisClient } from '@/config/redisClient';
 
 const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || 'default-refresh';
