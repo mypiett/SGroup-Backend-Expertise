@@ -14,8 +14,7 @@ export class BoardController {
   static async create(req: Request): Promise<ServiceResponse<any>> {
     try {
       const { title, workspaceId } = req.body;
-      if (!title || !workspaceId) {
-        //thêm validate
+      if (!title || !workspaceId) { 
         return new ServiceResponse(
           ResponseStatus.Failed,
           'Title and workspaceId are required',
@@ -41,9 +40,10 @@ export class BoardController {
     }
   }
 
+
   static async findAll(req: Request): Promise<ServiceResponse<any>> {
     try {
-      const workspaceId = req.query.workspaceId as string | undefined; //lấy từ query thay vì params, call kiểu GET /boards?workspaceId=...
+      const workspaceId = req.query.workspaceId as string | undefined; 
 
       if (!workspaceId) {
         return new ServiceResponse(
@@ -70,6 +70,7 @@ export class BoardController {
       );
     }
   }
+
 
   static async findOne(req: Request): Promise<ServiceResponse<any>> {
     try {
@@ -109,13 +110,13 @@ export class BoardController {
     }
   }
 
-  static async delete(req: Request): Promise<ServiceResponse<any>> {
+  static async closeBoard(req: Request): Promise<ServiceResponse<any>> {
     try {
-      await boardService.deleteBoard(req.params.id);
+      const board = await boardService.closeBoard(req.params.id);
       return new ServiceResponse(
         ResponseStatus.Success,
         'Board closed successfully',
-        null,
+        board,
         StatusCodes.OK
       );
     } catch (error: any) {
@@ -128,12 +129,12 @@ export class BoardController {
     }
   }
 
-  static async restore(req: Request): Promise<ServiceResponse<any>> {
+  static async reopenBoard(req: Request): Promise<ServiceResponse<any>> {
     try {
-      const board = await boardService.restoreBoard(req.params.id);
+      const board = await boardService.reopenBoard(req.params.id);
       return new ServiceResponse(
         ResponseStatus.Success,
-        'Board restored successfully',
+        'Board reopened successfully',
         board,
         StatusCodes.OK
       );
@@ -201,7 +202,27 @@ export class BoardController {
     }
   }
 
-  static async createLinkShareBoard(
+  static async deleteBoardPermanently(req: Request): Promise<ServiceResponse<any>> {
+    try {
+      const board = await boardService.deleteBoardPermanently(req.params.id);
+      return new ServiceResponse(
+        ResponseStatus.Success,
+        'Board deleted permanently',
+        board,
+
+        StatusCodes.OK
+      );
+    } catch (error: any) {
+      return new ServiceResponse(
+        ResponseStatus.Failed,
+        error.message,
+        null,
+        StatusCodes.BAD_REQUEST
+      );
+    }
+  }
+
+static async createLinkShareBoard(
     req: Request
   ): Promise<ServiceResponse<any>> {
     const boardId = req.params.id;

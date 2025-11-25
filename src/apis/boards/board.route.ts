@@ -1,12 +1,9 @@
 import { Router } from 'express';
 import { BoardController } from './board.controller';
-import {
-  handleServiceResponse,
-  validateHandle,
-} from '@/common/utils/httpHandlers';
+import { handleServiceResponse, validateHandle } from '@/common/utils/httpHandlers';
 import authenticateJWT from '@/common/middleware/authentication';
 import {
-  // requireWorkspacePermissions,
+  requireWorkspacePermissions,
   requireBoardPermissions,
 } from '@/common/middleware/authorization';
 import { PERMISSIONS } from '@/common/constants/permissions';
@@ -57,11 +54,7 @@ const route = Router();
  *       401:
  *         description: Unauthorized
  */
-route.post(
-  '/create',
-  authenticateJWT,
-
-  // requireWorkspacePermissions(PERMISSIONS.BOARDS_CREATE),
+route.post('/', authenticateJWT, requireWorkspacePermissions(PERMISSIONS.BOARDS_CREATE),
   async (req, res) => {
     const serviceResponse = await BoardController.create(req);
     return handleServiceResponse(serviceResponse, res);
@@ -96,7 +89,7 @@ route.post(
 route.get(
   '/',
   authenticateJWT,
-  // requireWorkspacePermissions(PERMISSIONS.BOARDS_READ),
+  requireWorkspacePermissions(PERMISSIONS.BOARDS_READ),
   async (req, res) => {
     const serviceResponse = await BoardController.findAll(req);
     return handleServiceResponse(serviceResponse, res);
@@ -193,10 +186,11 @@ route.put(
   }
 );
 
+
 /**
  * @swagger
- * /boards/{id}:
- *   delete:
+ * /boards/{id}/archive:
+ *   patch:
  *     tags:
  *       - Boards
  *     summary: Close board
@@ -216,19 +210,19 @@ route.put(
  *       404:
  *         description: Board not found
  */
-route.delete('/:id', async (req, res) => {
-  const serviceResponse = await BoardController.delete(req);
+route.patch('/:id/archive', async (req, res) => {
+  const serviceResponse = await BoardController.closeBoard(req);
   return handleServiceResponse(serviceResponse, res);
 });
 
 /**
  * @swagger
- * /boards/{id}/restore:
+ * /boards/{id}/reopen:
  *   patch:
  *     tags:
  *       - Boards
- *     summary: Restore closed board
- *     description: Set isClosed = false
+ *     summary: Reopen a closed board
+ *     description: Restore a previously closed board (set isClosed = false)
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -240,21 +234,48 @@ route.delete('/:id', async (req, res) => {
  *           type: string
  *     responses:
  *       200:
- *         description: Board restored successfully
+ *         description: Board reopened successfully
  *       404:
  *         description: Board not found
  *       403:
  *         description: Forbidden (no permission boards:update on this board)
  */
-route.patch(
-  '/:id/restore',
-  authenticateJWT,
-  requireBoardPermissions(PERMISSIONS.BOARDS_UPDATE),
-  async (req, res) => {
-    const serviceResponse = await BoardController.restore(req);
-    return handleServiceResponse(serviceResponse, res);
-  }
-);
+route.patch('/:id/reopen', async (req, res) => {
+  const serviceResponse = await BoardController.reopenBoard(req);
+  return handleServiceResponse(serviceResponse, res);
+});
+
+
+/**
+ * @swagger
+ * /boards/{id}:
+ *   delete:
+ *     tags:
+ *       - Boards
+ *     summary: Permanently delete a board
+ *     description: Permanently deletes the specified board from the database
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         description: Board ID
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Board deleted permanently
+ *       404:
+ *         description: Board not found
+ *       500:
+ *         description: Server Error
+ */
+route.delete('/:id', async (req, res) => {
+  const serviceResponse = await BoardController.deleteBoardPermanently(req);
+  return handleServiceResponse(serviceResponse, res);
+});
+
 
 /**
  * @swagger
@@ -480,6 +501,7 @@ route.post('/:id/invite/:inviteToken', async (req, res) => {
   const serviceResponse = await BoardController.JoinBoardByLink(req);
   return handleServiceResponse(serviceResponse, res);
 });
+
 export default route;
 
 /**
