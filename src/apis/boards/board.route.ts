@@ -102,10 +102,15 @@ route.post(
  *       401:
  *         description: Unauthorized
  */
-route.get('/', authenticateJWT, async (req, res) => {
-  const serviceResponse = await BoardController.findAll(req);
-  return handleServiceResponse(serviceResponse, res);
-});
+route.get(
+  '/',
+  authenticateJWT,
+  requireBoardPermissions(PERMISSIONS.BOARDS_READ),
+  async (req, res) => {
+    const serviceResponse = await BoardController.findAll(req);
+    return handleServiceResponse(serviceResponse, res);
+  }
+);
 
 /**
  * @swagger
@@ -192,6 +197,7 @@ route.put(
     return handleServiceResponse(serviceResponse, res);
   }
 );
+
 
 /**
  * @swagger
