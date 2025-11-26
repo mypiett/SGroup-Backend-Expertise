@@ -57,4 +57,7 @@ export class Board extends DateTimeEntity {
   // boardMembers
   @OneToMany(() => BoardMembers, (boardMember) => boardMember.board)
   public boardMembers: BoardMembers[];
+
+  @Column({ type: 'varchar', length: 255, nullable: true })
+  public inviteToken: string;
 }

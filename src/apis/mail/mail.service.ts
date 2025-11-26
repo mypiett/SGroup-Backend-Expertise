@@ -32,7 +32,7 @@ export class EmailService {
     await redisClient.set(`verify:${token}`, email, { EX: ttl });
     await redisClient.set(`email:${email}`, token, { EX: ttl });
 
-    const link = `http://localhost:3000/auth/verify-email?token=${token}`;
+    const link = `${process.env.BACKEND_URL}/auth/verify-email?token=${token}`;
     console.log(`[TEST] Verification link for ${email}: ${link}`);
 
     await this.transporter.sendMail({
@@ -67,7 +67,7 @@ export class EmailService {
   async sendBoardInvitationEmail(options: BoardInvitationEmailOptions) {
     const { to, boardTitle, inviterName, roleName, link } = options;
 
-    const boardLink = link || 'http://localhost:3000/boards';
+    const boardLink = link || `${process.env.BACKEND_URL}/boards`;
 
     await this.transporter.sendMail({
       from: `"TrelloClone" <${process.env.SMTP_USER}>`,

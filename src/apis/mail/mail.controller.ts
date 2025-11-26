@@ -32,10 +32,9 @@ export class EmailController {
       });
       return res.status(200).json({ message: 'Verification email sent' });
     } catch (error) {
-      console.log('Bug 1', error);
       return res
         .status(500)
-        .json({ message: 'Failed to send verification email' });
+        .json({ message: 'Failed to send verification email', error });
     }
   }
 
@@ -47,8 +46,7 @@ export class EmailController {
       const email = await emailService.verifyEmailToken(token);
       return res.status(200).json({ message: 'Email verified', email });
     } catch (error) {
-      console.log('Bug 2', error);
-      return res.status(500).json({ message: 'Failed to verify email' });
+      return res.status(500).json({ message: 'Failed to verify email', error });
     }
   }
 }

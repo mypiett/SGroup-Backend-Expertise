@@ -13,7 +13,8 @@ export class BoardController {
   static async create(req: Request): Promise<ServiceResponse<any>> {
     try {
       const { title, workspaceId } = req.body;
-      if (!title || !workspaceId) { //thêm validate
+      if (!title || !workspaceId) {
+        //thêm validate
         return new ServiceResponse(
           ResponseStatus.Failed,
           'Title and workspaceId are required',
@@ -38,7 +39,6 @@ export class BoardController {
       );
     }
   }
-
 
   static async findAll(req: Request): Promise<ServiceResponse<any>> {
     try {
@@ -69,7 +69,6 @@ export class BoardController {
       );
     }
   }
-
 
   static async findOne(req: Request): Promise<ServiceResponse<any>> {
     try {
@@ -193,6 +192,81 @@ export class BoardController {
         );
       }
 
+      return new ServiceResponse(
+        ResponseStatus.Failed,
+        error.message,
+        null,
+        StatusCodes.BAD_REQUEST
+      );
+    }
+  }
+
+  static async createLinkShareBoard(
+    req: Request
+  ): Promise<ServiceResponse<any>> {
+    const boardId = req.params.id;
+    const currentUserId = req.user?.userId;
+    try {
+      const link = await boardService.createLinkShareBoard(
+        boardId,
+        currentUserId
+      );
+      return new ServiceResponse(
+        ResponseStatus.Success,
+        'Invite link create successfully',
+        link,
+        StatusCodes.OK
+      );
+    } catch (error: any) {
+      return new ServiceResponse(
+        ResponseStatus.Failed,
+        error.message,
+        null,
+        StatusCodes.BAD_REQUEST
+      );
+    }
+  }
+
+  static async deleteLinkShareBoard(
+    req: Request
+  ): Promise<ServiceResponse<any>> {
+    const boardId = req.params.id;
+    const currentUserId = req.user?.userId;
+    try {
+      await boardService.deleteLinkShareBoard(boardId, currentUserId);
+      return new ServiceResponse(
+        ResponseStatus.Success,
+        'Invite Link delete successfully',
+        null,
+        StatusCodes.OK
+      );
+    } catch (error: any) {
+      return new ServiceResponse(
+        ResponseStatus.Failed,
+        error.message,
+        null,
+        StatusCodes.BAD_REQUEST
+      );
+    }
+  }
+
+  static async JoinBoardByLink(req: Request): Promise<ServiceResponse<any>> {
+    const boardId = req.params.id;
+    const inviteToken = req.params.inviteToken;
+    const currentUserId = req.user?.userId;
+    try {
+      const member = await boardService.JoinBoardByLink(
+        boardId,
+        currentUserId,
+        inviteToken
+      );
+      return new ServiceResponse(
+        ResponseStatus.Success,
+        'You joined this board successfully',
+        member,
+        StatusCodes.OK
+      );
+    } catch (error: any) {
       return new ServiceResponse(
         ResponseStatus.Failed,
         error.message,
