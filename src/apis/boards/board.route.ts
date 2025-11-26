@@ -320,4 +320,144 @@ route.post('/:id/invite', async (req, res) => {
   return handleServiceResponse(serviceResponse, res);
 });
 
+/**
+ * @swagger
+ * /boards/{id}/generate-link:
+ *   post:
+ *     tags:
+ *       - Boards
+ *     summary: Generate a share link for a board
+ *     description: Only board owner or admin can generate a share link.
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: ID of the board
+ *         example: "board-id-123"
+ *     responses:
+ *       200:
+ *         description: Invite link created successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "Invite link created successfully"
+ *                 link:
+ *                   type: string
+ *                   example: "http://localhost:3000/boards/board-id-123/invite/abcdef123456"
+ *       400:
+ *         description: Bad request (failed to create invite link)
+ *       401:
+ *         description: Unauthorized (not a board member or insufficient role)
+ */
+route.post('/:id/generate-link', async (req, res) => {
+  const serviceResponse = await BoardController.createLinkShareBoard(req);
+  return handleServiceResponse(serviceResponse, res);
+});
+
+/**
+ * @swagger
+ * /boards/{id}/invite-link:
+ *   delete:
+ *     tags:
+ *       - Boards
+ *     summary: Delete a board's share link
+ *     description: Only board owner or admin can delete the share link.
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: ID of the board
+ *         example: "board-id-123"
+ *     responses:
+ *       200:
+ *         description: Invite link deleted successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "Invite link deleted successfully"
+ *       400:
+ *         description: Bad request (no link to delete or failed)
+ *       401:
+ *         description: Unauthorized (not a board member or insufficient role)
+ */
+route.delete('/:id/invite-link', async (req, res) => {
+  const serviceResponse = await BoardController.deleteLinkShareBoard(req);
+  return handleServiceResponse(serviceResponse, res);
+});
+
+/**
+ * @swagger
+ * /boards/{id}/invite/{inviteToken}:
+ *   post:
+ *     tags:
+ *       - Boards
+ *     summary: Join a board via invite link
+ *     description: User joins the board using the invite token. Default role is BOARD_MEMBER.
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: ID of the board
+ *         example: "board-id-123"
+ *       - in: path
+ *         name: inviteToken
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Invitation token
+ *         example: "abcdef123456"
+ *     responses:
+ *       200:
+ *         description: Successfully joined the board
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "You joined this board successfully"
+ *                 member:
+ *                   type: object
+ *                   properties:
+ *                     id:
+ *                       type: string
+ *                     boardId:
+ *                       type: string
+ *                     userId:
+ *                       type: string
+ *                     roleId:
+ *                       type: string
+ *                     user:
+ *                       type: object
+ *                       properties:
+ *                         id:
+ *                           type: string
+ *                         name:
+ *                           type: string
+ *                         email:
+ *                           type: string
+ *       400:
+ *         description: Failed to join (invalid token or already a member)
+ *       401:
+ *         description: Unauthorized (user not logged in)
+ */
+route.post('/:id/invite/:inviteToken', async (req, res) => {
+  const serviceResponse = await BoardController.JoinBoardByLink(req);
+  return handleServiceResponse(serviceResponse, res);
+});
 export default route;

@@ -7,10 +7,7 @@ import { Role } from '@/common/entities/role.entity';
 import { BoardMembers } from '@/common/entities/board-member.entity';
 import { ROLES } from '@/common/constants/roles';
 import { EmailService } from '../mail/mail.service';
-
-import { BoardMembers } from '../../common/entities/board-member.entity';
-import { Role } from '../../common/entities/role.entity';
-import { ROLES } from '@/common/constants/roles';
+import crypto from 'crypto';
 
 export class BoardService {
   private boardRepository = AppDataSource.getRepository(Board);
@@ -19,9 +16,6 @@ export class BoardService {
   private userRepository = AppDataSource.getRepository(User);
   private roleRepository = AppDataSource.getRepository(Role);
   private emailService = new EmailService();
-
-  private boardMemberRepository = AppDataSource.getRepository(BoardMembers);
-  private roleRepository = AppDataSource.getRepository(Role);
 
   async createBoard(data: CreateBoardDto, creatorId?: string) {
     const workspace = await this.workspaceRepository.findOne({
@@ -172,9 +166,10 @@ export class BoardService {
     if (!currentMember) throw new Error('You are not a member of this board');
     if (
       currentMember.role.name !== ROLES.BOARD_OWNER &&
-      currentMember.role.name !== ROLES.BOARD_ADMIN
+      currentMember.role.name !== ROLES.BOARD_ADMIN &&
+      currentMember.role.name !== ROLES.BOARD_MEMBER
     ) {
-      throw new Error('Only board owner or admin can add members');
+      throw new Error('Only board owner or admin or member can add members');
     }
     if (existingMember)
       throw new Error('User is already a member of this board');
@@ -210,11 +205,103 @@ export class BoardService {
       boardTitle: board.title,
       inviterName: currentMember.user.name,
       roleName: role.name,
-      link: `http://localhost:3000/boards/${board.id}`,
+      link: `${process.env.BACKEND_URL}/boards/${board.id}`,
     });
 
     return {
       message: 'Member added to board successfully',
+      member: savedMember,
+    };
+  }
+
+  async createLinkShareBoard(boardId: string, currentUserId: string) {
+    const board = await this.boardRepository.findOne({
+      where: { id: boardId },
+    });
+    if (!board) throw new Error('Board not found');
+    const currentMember = await this.boardMemberRepository.findOne({
+      where: { boardId, userId: currentUserId },
+      relations: ['role', 'user'],
+    });
+    if (!currentMember) throw new Error('You are not a member of this board');
+    if (currentMember.role.name == ROLES.BOARD_OBSERVER)
+      throw new Error(`You don't have permission to create link`);
+    const inviteToken = crypto.randomBytes(16).toString('hex');
+    await this.boardRepository.update(
+      { id: boardId },
+      {
+        inviteToken: inviteToken,
+      }
+    );
+    const linkInvite = `${process.env.BACKEND_URL}/boards/${boardId}/invite/${inviteToken}`;
+    return {
+      message: 'Invite link created successfully',
+      link: linkInvite,
+    };
+  }
+
+  async deleteLinkShareBoard(boardId: string, currentUserId: string) {
+    const board = await this.boardRepository.findOne({
+      where: { id: boardId },
+    });
+    if (!board) throw new Error('Board not found');
+    const currentMember = await this.boardMemberRepository.findOne({
+      where: { boardId, userId: currentUserId },
+      relations: ['role', 'user'],
+    });
+    if (!currentMember) throw new Error('You are not a member of this board');
+    if (currentMember.role.name == ROLES.BOARD_OBSERVER)
+      throw new Error(`You don't have permission to delete link`);
+    if (!board.inviteToken)
+      throw new Error('Board does not have an invite link');
+    await this.boardRepository.update({ id: boardId }, { inviteToken: null });
+    return {
+      message: 'Invite link deleted successfully',
+    };
+  }
+
+  async JoinBoardByLink(
+    boardId: string,
+    currentUserId: string,
+    inviteToken: string
+  ) {
+    const board = await this.boardRepository.findOne({
+      where: { id: boardId },
+    });
+    if (!board) throw new Error('Board not found');
+    const currentMember = await this.boardMemberRepository.findOne({
+      where: { boardId, userId: currentUserId },
+      relations: ['role', 'user'],
+    });
+    if (currentMember)
+      throw new Error('You are already a member of this board');
+    if (!board.inviteToken) {
+      throw new Error('This board does not support invite by link');
+    }
+    if (board.inviteToken !== inviteToken)
+      throw new Error('Invalid or expired invation link');
+    const memberRole = await this.roleRepository.findOne({
+      where: { name: ROLES.BOARD_MEMBER },
+    });
+    if (!memberRole) {
+      throw new Error('Default board member role not found');
+    }
+    const newMember = this.boardMemberRepository.create({
+      boardId,
+      userId: currentUserId,
+      roleId: memberRole.id,
+    });
+    await this.boardMemberRepository.save(newMember);
+    const savedMember = await this.boardMemberRepository.findOne({
+      where: { id: newMember.id },
+      relations: ['user', 'role', 'board'],
+    });
+    if (savedMember?.user) {
+      delete savedMember.user.password;
+    }
+
+    return {
+      message: 'You joined this board successfully',
       member: savedMember,
     };
   }
