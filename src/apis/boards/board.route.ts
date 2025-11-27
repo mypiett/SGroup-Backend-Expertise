@@ -254,4 +254,35 @@ route.patch(
 );
 
 
+/**
+ * @swagger
+ * /boards/{id}/permanent:
+ *   delete:
+ *     tags:
+ *       - Boards
+ *     summary: Permanently delete a board
+ *     description: Permanently deletes the specified board from the database
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         description: Board ID
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Board deleted permanently
+ *       404:
+ *         description: Board not found
+ *       500:
+ *         description: Server Error
+ */
+route.delete('/:id/permanent', async (req, res) => {
+  const serviceResponse = await BoardController.deleteBoardPermanently(req);
+  return handleServiceResponse(serviceResponse, res);
+});
+
+
 export default route;

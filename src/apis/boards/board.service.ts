@@ -16,7 +16,6 @@ export class BoardService {
 
   async createBoard(data: CreateBoardDto, creatorId?: string) {
     const workspace = await this.workspaceRepository.findOne({
-      // không cho tạo board trong workspace đã archive
       where: { id: data.workspaceId, isArchived: false },
     });
 
@@ -136,4 +135,16 @@ export class BoardService {
 
     return await this.boardRepository.save(board);
   }
+
+  async deleteBoardPermanently(id: string) {
+    const board = await this.boardRepository.findOne({
+      where: { id },
+    });
+
+    if (!board) throw new Error('Board not found');
+
+    await this.boardRepository.remove(board);
+    return { message: 'Board deleted permanently' };
+  }
+
 }
