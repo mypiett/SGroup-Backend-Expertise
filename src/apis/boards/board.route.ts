@@ -53,11 +53,7 @@ const route = Router();
  *       401:
  *         description: Unauthorized
  */
-route.post(
-  '/create',
-  authenticateJWT,
-
-  requireWorkspacePermissions(PERMISSIONS.BOARDS_CREATE),
+route.post('/',authenticateJWT, requireWorkspacePermissions(PERMISSIONS.BOARDS_CREATE),
   async (req, res) => {
     const serviceResponse = await BoardController.create(req);
     return handleServiceResponse(serviceResponse, res);
