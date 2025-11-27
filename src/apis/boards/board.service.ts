@@ -1,7 +1,16 @@
+import { User } from '@/common/entities/user.entity';
 import { Board } from '../../common/entities/board.entity';
 import { Workspace } from '../../common/entities/workspace.entity';
 import { AppDataSource } from '../../config/data-source';
-import { CreateBoardDto, UpdateBoardDto } from './board.dto';
+import { AddBoardMemberDto, CreateBoardDto, UpdateBoardDto } from './board.dto';
+import { Role } from '@/common/entities/role.entity';
+import { BoardMembers } from '@/common/entities/board-member.entity';
+import { ROLES } from '@/common/constants/roles';
+import { EmailService } from '../mail/mail.service';
+
+import { BoardMembers } from '../../common/entities/board-member.entity';
+import { Role } from '../../common/entities/role.entity';
+import { ROLES } from '@/common/constants/roles';
 
 import { BoardMembers } from '../../common/entities/board-member.entity';
 import { Role } from '../../common/entities/role.entity';
@@ -10,6 +19,13 @@ import { ROLES } from '@/common/constants/roles';
 export class BoardService {
   private boardRepository = AppDataSource.getRepository(Board);
   private workspaceRepository = AppDataSource.getRepository(Workspace);
+  private boardMemberRepository = AppDataSource.getRepository(BoardMembers);
+  private userRepository = AppDataSource.getRepository(User);
+  private roleRepository = AppDataSource.getRepository(Role);
+  private emailService = new EmailService();
+
+  private boardMemberRepository = AppDataSource.getRepository(BoardMembers);
+  private roleRepository = AppDataSource.getRepository(Role);
 
   private boardMemberRepository = AppDataSource.getRepository(BoardMembers);
   private roleRepository = AppDataSource.getRepository(Role);

@@ -5,6 +5,7 @@ import {
   ResponseStatus,
 } from '@/common/models/serviceResponse';
 import { StatusCodes } from 'http-status-codes';
+import { AddBoardMemberDto } from './board.dto';
 
 const boardService = new BoardService();
 

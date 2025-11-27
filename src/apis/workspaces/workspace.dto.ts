@@ -42,5 +42,31 @@ export class AddMemberDto {
 export class UpdateMemberRoleDto {
   @IsUUID('4', { message: 'Role ID must be a valid UUID' })
   @IsNotEmpty({ message: 'Role ID is required' })
-  roleId: string;
+  roleName: string;
+}
+
+export class InviteMemberDto {
+  @IsString({ message: 'Email is required' })
+  @IsNotEmpty({ message: 'Email is required' })
+  email: string;
+
+  @IsString({ message: 'Role name is required' })
+  @IsNotEmpty({ message: 'Role name is required' })
+  roleName: string;
+}
+
+export class UpdateVisibilityDto {
+  @IsEnum(['private', 'public'], {
+    message: 'Visibility must be private or public',
+  })
+  @IsNotEmpty({ message: 'Visibility is required' })
+  visibility: 'private' | 'public';
+}
+
+export class UpdateVisibilityDto {
+  @IsEnum(['private', 'public'], {
+    message: 'Visibility must be private or public',
+  })
+  @IsNotEmpty({ message: 'Visibility is required' })
+  visibility: 'private' | 'public';
 }

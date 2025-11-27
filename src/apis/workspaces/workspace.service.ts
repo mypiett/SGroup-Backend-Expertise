@@ -5,11 +5,16 @@ import {
   UpdateWorkspaceDto,
   AddMemberDto,
   UpdateMemberRoleDto,
+  InviteMemberDto,
 } from './workspace.dto';
 import { Workspace } from '../../common/entities/workspace.entity';
 import { WorkspaceMembers } from '../../common/entities/workspace-member.entity';
 import { Role } from '../../common/entities/role.entity';
 import { ROLES } from '../../common/constants';
+import { validateEmail } from '@/common/utils/validateEmail';
+import { redisClient } from '@/config/redisClient';
+import nodemailer from 'nodemailer';
+import { v4 as uuidv4 } from 'uuid';
 
 export class WorkspaceService {
   private workspaceRepository = AppDataSource.getRepository(Workspace);
@@ -17,6 +22,18 @@ export class WorkspaceService {
   private workspaceMemberRepository =
     AppDataSource.getRepository(WorkspaceMembers);
   private roleRepository = AppDataSource.getRepository(Role);
+  private transporter;
+
+  constructor() {
+    this.transporter = nodemailer.createTransport({
+      host: 'smtp.gmail.com',
+      port: 587,
+      auth: {
+        user: process.env.SMTP_USER,
+        pass: process.env.SMTP_PASS,
+      },
+    });
+  }
 
   async createWorkspace(userId: string, data: createWorkspaceDto) {
     // Tìm user và role song song vì không phụ thuộc vào nhau
@@ -119,6 +136,50 @@ export class WorkspaceService {
     // Lọc và format kết quả
     return workspaceMembers
       .filter((wm) => !wm.workspace.isArchived)
+      .map((wm) => ({
+        id: wm.workspace.id,
+        title: wm.workspace.title,
+        description: wm.workspace.description,
+        visibility: wm.workspace.visibility,
+        isArchived: wm.workspace.isArchived,
+        createdAt: wm.workspace.createdAt,
+        updatedAt: wm.workspace.updatedAt,
+
+        myRole: wm.role,
+
+        boards: wm.workspace.boards || [],
+
+        members:
+          wm.workspace.workspaceMembers?.map((member) => ({
+            id: member.id,
+            userId: member.user?.id,
+            username: member.user?.name,
+            email: member.user?.email,
+            avatarUrl: member.user?.avatarUrl,
+            role: member.role,
+            joinedAt: member.createdAt,
+          })) || [],
+      }));
+  }
+
+  // Get archived workspaces by user ID
+  async getArchivedWorkspacesByUserId(userId: string) {
+    // Lấy tất cả workspace đã archived mà user là thành viên
+    const workspaceMembers = await this.workspaceMemberRepository.find({
+      where: { userId },
+      relations: [
+        'workspace',
+        'workspace.workspaceMembers',
+        'workspace.workspaceMembers.user',
+        'workspace.workspaceMembers.role',
+        'workspace.boards',
+        'role',
+      ],
+    });
+
+    // Lọc và format kết quả - chỉ lấy những workspace đã archived
+    return workspaceMembers
+      .filter((wm) => wm.workspace.isArchived)
       .map((wm) => ({
         id: wm.workspace.id,
         title: wm.workspace.title,
@@ -313,7 +374,7 @@ export class WorkspaceService {
         relations: ['user', 'role'],
       }),
       this.roleRepository.findOne({
-        where: { id: data.roleId },
+        where: { name: data.roleName },
       }),
     ]);
 
@@ -368,7 +429,7 @@ export class WorkspaceService {
     await this.workspaceMemberRepository
       .createQueryBuilder()
       .update()
-      .set({ roleId: data.roleId })
+      .set({ roleId: newRole.id })
       .where('id = :memberId', { memberId })
       .execute();
 
@@ -462,5 +523,200 @@ export class WorkspaceService {
     await this.workspaceMemberRepository.remove(member);
 
     return { message: 'Member removed successfully' };
+  }
+
+  // Invite member by email
+  async inviteMemberByEmail(
+    workspaceId: string,
+    data: InviteMemberDto,
+    currentUserId: string
+  ) {
+    // Validate email format
+    if (!validateEmail(data.email)) {
+      throw new Error('Invalid email format');
+    }
+
+    // Check workspace và current member song song
+    const [workspace, currentMember] = await Promise.all([
+      this.workspaceRepository.findOne({
+        where: { id: workspaceId, isArchived: false },
+      }),
+      this.workspaceMemberRepository.findOne({
+        where: { workspaceId, userId: currentUserId },
+        relations: ['role'],
+      }),
+    ]);
+
+    if (!workspace) {
+      throw new Error('Workspace not found');
+    }
+
+    if (!currentMember) {
+      throw new Error('You are not a member of this workspace');
+    }
+
+    if (
+      currentMember.role.name !== ROLES.WORKSPACE_ADMIN &&
+      currentMember.role.name !== ROLES.WORKSPACE_MODERATOR
+    ) {
+      throw new Error('Only workspace admin or moderator can invite members');
+    }
+
+    // Check if user exists
+    const user = await this.userRepository.findOne({
+      where: { email: data.email },
+    });
+
+    // Check if role exists
+    const role = await this.roleRepository.findOne({
+      where: { name: data.roleName },
+    });
+
+    if (!role) {
+      throw new Error('Role not found');
+    }
+
+    // Validate role là workspace role
+    if (
+      role.name !== ROLES.WORKSPACE_ADMIN &&
+      role.name !== ROLES.WORKSPACE_MEMBER &&
+      role.name !== ROLES.WORKSPACE_OBSERVER &&
+      role.name !== ROLES.WORKSPACE_MODERATOR
+    ) {
+      throw new Error('Invalid role for workspace member');
+    }
+
+    // Nếu user đã tồn tại
+    if (user) {
+      // Check if already a member
+      const existingMember = await this.workspaceMemberRepository.findOne({
+        where: { workspaceId, userId: user.id },
+      });
+
+      if (existingMember) {
+        throw new Error('User is already a member of this workspace');
+      }
+
+      // Add directly as member
+      const newMember = this.workspaceMemberRepository.create({
+        workspaceId,
+        userId: user.id,
+        roleId: role.id,
+      });
+
+      await this.workspaceMemberRepository.save(newMember);
+
+      // Send notification email
+      await this.transporter.sendMail({
+        from: `"Task Manager" <${process.env.SMTP_USER}>`,
+        to: data.email,
+        subject: `You've been added to ${workspace.title}`,
+        html: `
+          <h3>Welcome to ${workspace.title}!</h3>
+          <p>You have been added to the workspace with role: <strong>${role.name.replace('workspace_', '')}</strong></p>
+          <p>You can now access the workspace and start collaborating.</p>
+          <p><a href="${process.env.FRONTEND_URL}/workspaces/${workspaceId}">Go to Workspace</a></p>
+        `,
+      });
+
+      return {
+        message: 'User added to workspace successfully',
+        member: await this.workspaceMemberRepository.findOne({
+          where: { id: newMember.id },
+          relations: ['user', 'role', 'workspace'],
+        }),
+      };
+    }
+
+    // Nếu user chưa tồn tại, gửi invitation token
+    const invitationToken = uuidv4();
+    const ttl = 7 * 24 * 60 * 60; // 7 days
+
+    // Store invitation data in Redis
+    const invitationData = {
+      workspaceId,
+      email: data.email,
+      roleId: role.id,
+      roleName: role.name,
+      invitedBy: currentUserId,
+    };
+
+    await redisClient.set(
+      `workspace-invite:${invitationToken}`,
+      JSON.stringify(invitationData),
+      { EX: ttl }
+    );
+
+    // Send invitation email
+    const invitationLink = `${process.env.FRONTEND_URL}/accept-invitation?token=${invitationToken}`;
+
+    await this.transporter.sendMail({
+      from: `"Task Manager" <${process.env.SMTP_USER}>`,
+      to: data.email,
+      subject: `You've been invited to ${workspace.title}`,
+      html: `
+        <h3>You've been invited to join ${workspace.title}!</h3>
+        <p>You have been invited to join the workspace with role: <strong>${role.name.replace('workspace_', '')}</strong></p>
+        <p>Please register or login to accept this invitation.</p>
+        <p><a href="${invitationLink}">Accept Invitation</a></p>
+        <p>This invitation will expire in 7 days.</p>
+      `,
+    });
+
+    return {
+      message: 'Invitation sent successfully',
+      invitation: {
+        email: data.email,
+        workspaceId,
+        roleName: role.name,
+      },
+    };
+  }
+
+  // Update workspace visibility
+  async updateVisibility(
+    workspaceId: string,
+    visibility: 'private' | 'public',
+    currentUserId: string
+  ) {
+    // Check workspace and current member
+    const [workspace, currentMember] = await Promise.all([
+      this.workspaceRepository.findOne({
+        where: { id: workspaceId, isArchived: false },
+      }),
+      this.workspaceMemberRepository.findOne({
+        where: { workspaceId, userId: currentUserId },
+        relations: ['role'],
+      }),
+    ]);
+
+    if (!workspace) {
+      throw new Error('Workspace not found');
+    }
+
+    if (!currentMember) {
+      throw new Error('You are not a member of this workspace');
+    }
+
+    // Only Owner (Admin) or Admin can change visibility
+    if (
+      currentMember.role.name !== ROLES.WORKSPACE_ADMIN &&
+      currentMember.role.name !== ROLES.WORKSPACE_MODERATOR
+    ) {
+      throw new Error('Only workspace owner or admin can change visibility');
+    }
+
+    // Update visibility
+    workspace.visibility = visibility;
+    await this.workspaceRepository.save(workspace);
+
+    return {
+      message: 'Workspace visibility updated successfully',
+      workspace: {
+        id: workspace.id,
+        title: workspace.title,
+        visibility: workspace.visibility,
+      },
+    };
   }
 }

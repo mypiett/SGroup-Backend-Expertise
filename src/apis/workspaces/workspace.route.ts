@@ -90,6 +90,29 @@ route.get('/', async (req, res) => {
 
 /**
  * @swagger
+ * /workspaces/archived:
+ *   get:
+ *     tags:
+ *       - Workspace
+ *     summary: Get user's archived workspaces
+ *     description: Retrieve all archived workspaces belonging to the authenticated user
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Successfully retrieved archived workspaces
+ *       401:
+ *         description: Unauthorized
+ *       500:
+ *         description: Server Error
+ */
+route.get('/archived', async (req, res) => {
+  const serviceResponse = await WorkspaceController.getArchivedWorkspaces(req);
+  return handleServiceResponse(serviceResponse, res);
+});
+
+/**
+ * @swagger
  * /workspaces/{id}:
  *   get:
  *     tags:
@@ -342,6 +365,58 @@ route.post('/:id/members', async (req, res) => {
 
 /**
  * @swagger
+ * /workspaces/{id}/invite:
+ *   post:
+ *     tags:
+ *       - Workspace
+ *     summary: Invite member by email
+ *     description: Invite a user to join the workspace by email. If user exists, add directly. If not, send invitation email.
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         description: Workspace ID
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - email
+ *               - roleName
+ *             properties:
+ *               email:
+ *                 type: string
+ *                 format: email
+ *                 example: user@example.com
+ *               roleName:
+ *                 type: string
+ *                 example: workspace_member
+ *                 description: Role name (workspace_admin, workspace_moderator, workspace_member, workspace_observer)
+ *     responses:
+ *       201:
+ *         description: Invitation sent or user added successfully
+ *       400:
+ *         description: Invalid input or user already a member
+ *       401:
+ *         description: Unauthorized
+ *       404:
+ *         description: Workspace or role not found
+ *       500:
+ *         description: Server Error
+ */
+route.post('/:id/invite', async (req, res) => {
+  const serviceResponse = await WorkspaceController.inviteMemberByEmail(req);
+  return handleServiceResponse(serviceResponse, res);
+});
+
+/**
+ * @swagger
  * /workspaces/{id}/members/{memberId}:
  *   patch:
  *     tags:
@@ -425,6 +500,80 @@ route.patch('/:id/members/:memberId', async (req, res) => {
  */
 route.delete('/:id/members/:memberId', async (req, res) => {
   const serviceResponse = await WorkspaceController.removeMember(req);
+  return handleServiceResponse(serviceResponse, res);
+});
+
+/**
+ * @swagger
+ * /workspaces/{id}/visibility:
+ *   patch:
+ *     tags:
+ *       - Workspace
+ *     summary: Update workspace visibility
+ *     description: Change workspace visibility between private and public. Only workspace owner or admin can perform this action.
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         description: Workspace ID
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - visibility
+ *             properties:
+ *               visibility:
+ *                 type: string
+ *                 enum: [private, public]
+ *                 example: public
+ *                 description: Workspace visibility (private or public)
+ *     responses:
+ *       200:
+ *         description: Workspace visibility updated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: success
+ *                 message:
+ *                   type: string
+ *                   example: Workspace visibility updated successfully
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     workspace:
+ *                       type: object
+ *                       properties:
+ *                         id:
+ *                           type: string
+ *                         title:
+ *                           type: string
+ *                         visibility:
+ *                           type: string
+ *                           enum: [private, public]
+ *       400:
+ *         description: Invalid visibility value
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Only workspace owner or admin can change visibility
+ *       404:
+ *         description: Workspace not found
+ *       500:
+ *         description: Server Error
+ */
+route.patch('/:id/visibility', async (req, res) => {
+  const serviceResponse = await WorkspaceController.updateVisibility(req);
   return handleServiceResponse(serviceResponse, res);
 });
 
