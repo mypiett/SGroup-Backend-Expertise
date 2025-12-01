@@ -1,4 +1,10 @@
-import { Column, Entity, OneToMany, PrimaryGeneratedColumn } from 'typeorm';
+import {
+  Column,
+  Entity,
+  Index,
+  OneToMany,
+  PrimaryGeneratedColumn,
+} from 'typeorm';
 
 import { DateTimeEntity } from './base/dateTimeEntity';
 import { BoardMembers } from './board-member.entity';
@@ -8,6 +14,7 @@ import { Notification } from './notification.entity';
 import { WorkspaceMembers } from './workspace-member.entity';
 
 @Entity('users')
+@Index('idx_users_email', ['email'])
 export class User extends DateTimeEntity {
   @PrimaryGeneratedColumn('uuid')
   public id: string;

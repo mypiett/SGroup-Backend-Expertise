@@ -1,7 +1,16 @@
 import { Router } from 'express';
 import { AuthController } from './auth.controller';
 import { EmailController } from '../mail/mail.controller';
-import { handleServiceResponse } from '@/common/utils/httpHandlers';
+import {
+  handleServiceResponse,
+  validateHandle,
+} from '@/common/utils/httpHandlers';
+import {
+  LoginSchema,
+  RegisterSchema,
+  ResetPasswordSchema,
+  VerifyEmailSchema,
+} from './auth.schema';
 
 const route = Router();
 const emailController = new EmailController();
@@ -36,6 +45,7 @@ const emailController = new EmailController();
  */
 route.post(
   '/request-verify-email',
+  validateHandle(VerifyEmailSchema),
   emailController.requestVerifyEmail.bind(emailController)
 );
 
@@ -121,7 +131,7 @@ route.get('/verify-email', emailController.verifyEmail.bind(emailController));
  *             example:
  *               message: "Internal server error"
  */
-route.post('/register', async (req, res) => {
+route.post('/register', validateHandle(RegisterSchema), async (req, res) => {
   const serviceResponse = await AuthController.register(req);
   return handleServiceResponse(serviceResponse, res);
 });
@@ -167,7 +177,7 @@ route.post('/register', async (req, res) => {
  *       400:
  *         description: Invalid credentials or missing fields
  */
-route.post('/login', async (req, res) => {
+route.post('/login', validateHandle(LoginSchema), async (req, res) => {
   const serviceResponse = await AuthController.login(req, res);
   return handleServiceResponse(serviceResponse, res);
 });
@@ -282,10 +292,14 @@ route.get('/google/callback', (req, res) => {
  *                   type: string
  *                   example: Too many requests. Please wait a few minutes before requesting again.
  */
-route.post('/forget-password', async (req, res) => {
-  const serviceResponse = await AuthController.forgetPassword(req);
-  return handleServiceResponse(serviceResponse, res);
-});
+route.post(
+  '/forget-password',
+  validateHandle(VerifyEmailSchema),
+  async (req, res) => {
+    const serviceResponse = await AuthController.forgetPassword(req);
+    return handleServiceResponse(serviceResponse, res);
+  }
+);
 
 /**
  * @swagger
@@ -338,10 +352,14 @@ route.post('/forget-password', async (req, res) => {
  *                   type: string
  *                   example: Invalid code
  */
-route.post('/reset-password', async (req, res) => {
-  const serviceResponse = await AuthController.resetPassword(req);
-  return handleServiceResponse(serviceResponse, res);
-});
+route.post(
+  '/reset-password',
+  validateHandle(ResetPasswordSchema),
+  async (req, res) => {
+    const serviceResponse = await AuthController.resetPassword(req);
+    return handleServiceResponse(serviceResponse, res);
+  }
+);
 
 route.post('/refreshToken', async (req, res) => {
   const serviceResponse = await AuthController.refreshToken(req);
