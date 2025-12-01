@@ -116,30 +116,6 @@ export class BoardService {
     return await this.boardRepository.save(board);
   }
 
-  async deleteBoard(id: string) {
-    const board = await this.boardRepository.findOne({
-      where: { id },
-    });
-
-    if (!board) throw new Error('Board not found');
-
-    board.isClosed = true;
-
-    return await this.boardRepository.save(board);
-  }
-
-  async restoreBoard(id: string) {
-    const board = await this.boardRepository.findOne({
-      where: { id },
-    });
-
-    if (!board) throw new Error('Board not found');
-
-    board.isClosed = false;
-
-    return await this.boardRepository.save(board);
-  }
-
   async addMemberToBoard(
     boardId: string,
     data: AddBoardMemberInput,

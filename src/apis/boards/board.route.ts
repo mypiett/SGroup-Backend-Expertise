@@ -211,7 +211,7 @@ route.put(
  *         description: Board not found
  */
 route.patch('/:id/archive', async (req, res) => {
-  const serviceResponse = await BoardController.closeBoard(req);
+  const serviceResponse = await BoardController.closeBoard(req); 
   return handleServiceResponse(serviceResponse, res);
 });
 
@@ -240,7 +240,7 @@ route.patch('/:id/archive', async (req, res) => {
  *       403:
  *         description: Forbidden (no permission boards:update on this board)
  */
-route.patch('/:id/reopen', async (req, res) => {
+route.patch('/:id/reopen', async (req, res) => { 
   const serviceResponse = await BoardController.reopenBoard(req);
   return handleServiceResponse(serviceResponse, res);
 });
@@ -271,7 +271,7 @@ route.patch('/:id/reopen', async (req, res) => {
  *       500:
  *         description: Server Error
  */
-route.delete('/:id', async (req, res) => {
+route.delete('/:id', async (req, res) => {  
   const serviceResponse = await BoardController.deleteBoardPermanently(req);
   return handleServiceResponse(serviceResponse, res);
 });
