@@ -1,5 +1,3 @@
-import { validateEmail } from '@/common/utils/validateEmail';
-import { LoginDto, RegisterDto } from './auth.dto';
 import { AuthService } from './auth.service';
 import { Request, Response } from 'express';
 import jwt from 'jsonwebtoken';
@@ -15,19 +13,11 @@ import { StatusCodes } from 'http-status-codes';
 
 export class AuthController {
   static async register(req: Request): Promise<ServiceResponse<any>> {
-    const data: RegisterDto = req.body;
+    const data = req.body;
     if (!data.name || !data.email || !data.password) {
       return new ServiceResponse(
         ResponseStatus.Failed,
         'All fields are required',
-        null,
-        StatusCodes.BAD_REQUEST
-      );
-    }
-    if (!validateEmail(data.email)) {
-      return new ServiceResponse(
-        ResponseStatus.Failed,
-        'Invalid email format',
         null,
         StatusCodes.BAD_REQUEST
       );
@@ -74,19 +64,11 @@ export class AuthController {
     req: Request,
     res: Response
   ): Promise<ServiceResponse<any>> {
-    const data: LoginDto = req.body;
+    const data = req.body;
     if (!data.email || !data.password) {
       return new ServiceResponse(
         ResponseStatus.Failed,
         'All fields are required',
-        null,
-        StatusCodes.BAD_REQUEST
-      );
-    }
-    if (!validateEmail(data.email)) {
-      return new ServiceResponse(
-        ResponseStatus.Failed,
-        'Invalid email format',
         null,
         StatusCodes.BAD_REQUEST
       );
@@ -185,14 +167,6 @@ export class AuthController {
 
   static async forgetPassword(req: Request): Promise<ServiceResponse<any>> {
     const { email } = req.body;
-    if (!validateEmail(email)) {
-      return new ServiceResponse(
-        ResponseStatus.Failed,
-        'Invalid email format',
-        null,
-        StatusCodes.BAD_REQUEST
-      );
-    }
     const lastSentRequestForgotPassword = await redisClient.get(
       `lastSentRequestForgotPassword:${email}`
     );
@@ -229,14 +203,6 @@ export class AuthController {
 
   static async resetPassword(req: Request): Promise<ServiceResponse<any>> {
     const { email, code, newPassword } = req.body;
-    if (!validateEmail(email)) {
-      return new ServiceResponse(
-        ResponseStatus.Failed,
-        'Invalid email format',
-        null,
-        StatusCodes.BAD_REQUEST
-      );
-    }
     try {
       await authService.resetPassword(email, newPassword, code);
       return new ServiceResponse(

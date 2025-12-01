@@ -1,6 +1,7 @@
 import { AppDataSource } from '../../config/data-source';
 import { User } from '../../common/entities/user.entity';
 import { UpdateProfileDto } from './user.dto';
+import { redisClient } from '@/config/redisClient';
 
 export class UserService {
   private userRepository = AppDataSource.getRepository(User);
@@ -51,9 +52,15 @@ export class UserService {
     if (dto.bio !== undefined) user.bio = dto.bio;
 
     await this.userRepository.save(user);
+    const { password, ...userWithoutPassword } = user;
 
-    (user as any).password = undefined;
-    return user;
+    await redisClient.set(
+      `user:${userId}`,
+      JSON.stringify(userWithoutPassword),
+      { EX: 900 }
+    );
+
+    return userWithoutPassword as User;
   }
 
   async updateAvatar(userId: string, avatarUrl: string) {
@@ -66,7 +73,15 @@ export class UserService {
 
     user.avatarUrl = avatarUrl;
     await userRepository.save(user);
-    return user;
+    const { password, ...userWithoutPassword } = user;
+
+    await redisClient.set(
+      `user:${userId}`,
+      JSON.stringify(userWithoutPassword),
+      { EX: 900 }
+    );
+
+    return userWithoutPassword as User;
   }
 
   async findUserById(userId: string) {
