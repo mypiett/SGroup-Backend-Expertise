@@ -1,7 +1,6 @@
 import { NextFunction, Request, Response } from 'express';
 import { StatusCodes } from 'http-status-codes';
-import { z, ZodError } from 'zod';
-
+import { z, ZodError, ZodObject, ZodRawShape } from 'zod';
 import {
   ResponseStatus,
   ServiceResponse,
@@ -65,4 +64,29 @@ export const validateRequest =
           );
       }
     }
+  };
+
+export const validateHandle =
+  (schema: ZodObject<ZodRawShape>) =>
+  (req: Request, res: Response, next: NextFunction) => {
+    const result = schema.safeParse(req.body);
+
+    if (!result.success) {
+      const errorMessage = result.error.issues
+        .map((issue) => `${issue.path.join('.')}: ${issue.message}`)
+        .join(', ');
+
+      return res
+        .status(StatusCodes.BAD_REQUEST)
+        .json(
+          new ServiceResponse<null>(
+            ResponseStatus.Failed,
+            `Invalid body: ${errorMessage}`,
+            null,
+            StatusCodes.BAD_REQUEST
+          )
+        );
+    }
+    req.body = result.data;
+    next();
   };
