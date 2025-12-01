@@ -14,7 +14,7 @@ export class BoardController {
   static async create(req: Request): Promise<ServiceResponse<any>> {
     try {
       const { title, workspaceId } = req.body;
-      if (!title || !workspaceId) { 
+      if (!title || !workspaceId) {
         return new ServiceResponse(
           ResponseStatus.Failed,
           'Title and workspaceId are required',
@@ -40,10 +40,9 @@ export class BoardController {
     }
   }
 
-
   static async findAll(req: Request): Promise<ServiceResponse<any>> {
     try {
-      const workspaceId = req.query.workspaceId as string | undefined; 
+      const workspaceId = req.query.workspaceId as string | undefined;
 
       if (!workspaceId) {
         return new ServiceResponse(
@@ -70,7 +69,6 @@ export class BoardController {
       );
     }
   }
-
 
   static async findOne(req: Request): Promise<ServiceResponse<any>> {
     try {
@@ -202,7 +200,9 @@ export class BoardController {
     }
   }
 
-  static async deleteBoardPermanently(req: Request): Promise<ServiceResponse<any>> {
+  static async deleteBoardPermanently(
+    req: Request
+  ): Promise<ServiceResponse<any>> {
     try {
       const board = await boardService.deleteBoardPermanently(req.params.id);
       return new ServiceResponse(
@@ -222,7 +222,7 @@ export class BoardController {
     }
   }
 
-static async createLinkShareBoard(
+  static async createLinkShareBoard(
     req: Request
   ): Promise<ServiceResponse<any>> {
     const boardId = req.params.id;
