@@ -5,7 +5,6 @@ import {
   ResponseStatus,
 } from '@/common/models/serviceResponse';
 import { StatusCodes } from 'http-status-codes';
-import { AddBoardMemberDto } from './board.dto';
 
 const boardService = new BoardService();
 
@@ -150,8 +149,7 @@ export class BoardController {
     try {
       const boardId = req.params.id;
       const currentUserId = req.user?.userId;
-      const data: AddBoardMemberDto = req.body;
-
+      const data = req.body;
       const result = await boardService.addMemberToBoard(
         boardId,
         data,

@@ -2,12 +2,13 @@ import { User } from '@/common/entities/user.entity';
 import { Board } from '../../common/entities/board.entity';
 import { Workspace } from '../../common/entities/workspace.entity';
 import { AppDataSource } from '../../config/data-source';
-import { AddBoardMemberDto, CreateBoardDto, UpdateBoardDto } from './board.dto';
+import { CreateBoardDto, UpdateBoardDto } from './board.dto';
 import { Role } from '@/common/entities/role.entity';
 import { BoardMembers } from '@/common/entities/board-member.entity';
 import { ROLES } from '@/common/constants/roles';
 import { EmailService } from '../mail/mail.service';
 import crypto from 'crypto';
+import { AddBoardMemberInput } from './board.schema';
 
 export class BoardService {
   private boardRepository = AppDataSource.getRepository(Board);
@@ -142,7 +143,7 @@ export class BoardService {
 
   async addMemberToBoard(
     boardId: string,
-    data: AddBoardMemberDto,
+    data: AddBoardMemberInput,
     currentUserId: string
   ) {
     const user = await this.userRepository.findOne({
@@ -215,14 +216,14 @@ export class BoardService {
   }
 
   async createLinkShareBoard(boardId: string, currentUserId: string) {
-    const board = await this.boardRepository.findOne({
-      where: { id: boardId },
-    });
+    const [board, currentMember] = await Promise.all([
+      this.boardRepository.findOne({ where: { id: boardId } }),
+      this.boardMemberRepository.findOne({
+        where: { boardId, userId: currentUserId },
+        relations: ['role', 'user'],
+      }),
+    ]);
     if (!board) throw new Error('Board not found');
-    const currentMember = await this.boardMemberRepository.findOne({
-      where: { boardId, userId: currentUserId },
-      relations: ['role', 'user'],
-    });
     if (!currentMember) throw new Error('You are not a member of this board');
     if (currentMember.role.name == ROLES.BOARD_OBSERVER)
       throw new Error(`You don't have permission to create link`);
@@ -241,14 +242,14 @@ export class BoardService {
   }
 
   async deleteLinkShareBoard(boardId: string, currentUserId: string) {
-    const board = await this.boardRepository.findOne({
-      where: { id: boardId },
-    });
+    const [board, currentMember] = await Promise.all([
+      this.boardRepository.findOne({ where: { id: boardId } }),
+      this.boardMemberRepository.findOne({
+        where: { boardId, userId: currentUserId },
+        relations: ['role', 'user'],
+      }),
+    ]);
     if (!board) throw new Error('Board not found');
-    const currentMember = await this.boardMemberRepository.findOne({
-      where: { boardId, userId: currentUserId },
-      relations: ['role', 'user'],
-    });
     if (!currentMember) throw new Error('You are not a member of this board');
     if (currentMember.role.name == ROLES.BOARD_OBSERVER)
       throw new Error(`You don't have permission to delete link`);
@@ -265,14 +266,14 @@ export class BoardService {
     currentUserId: string,
     inviteToken: string
   ) {
-    const board = await this.boardRepository.findOne({
-      where: { id: boardId },
-    });
+    const [board, currentMember] = await Promise.all([
+      this.boardRepository.findOne({ where: { id: boardId } }),
+      this.boardMemberRepository.findOne({
+        where: { boardId, userId: currentUserId },
+        relations: ['role', 'user'],
+      }),
+    ]);
     if (!board) throw new Error('Board not found');
-    const currentMember = await this.boardMemberRepository.findOne({
-      where: { boardId, userId: currentUserId },
-      relations: ['role', 'user'],
-    });
     if (currentMember)
       throw new Error('You are already a member of this board');
     if (!board.inviteToken) {

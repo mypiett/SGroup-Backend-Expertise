@@ -1,12 +1,16 @@
 import { Router } from 'express';
 import { BoardController } from './board.controller';
-import { handleServiceResponse } from '@/common/utils/httpHandlers';
+import {
+  handleServiceResponse,
+  validateHandle,
+} from '@/common/utils/httpHandlers';
 import authenticateJWT from '@/common/middleware/authentication';
 import {
-  requireWorkspacePermissions,
+  // requireWorkspacePermissions,
   requireBoardPermissions,
 } from '@/common/middleware/authorization';
 import { PERMISSIONS } from '@/common/constants/permissions';
+import { addMemberToBoardSchema } from './board.schema';
 const route = Router();
 
 /**
@@ -57,7 +61,7 @@ route.post(
   '/create',
   authenticateJWT,
 
-  requireWorkspacePermissions(PERMISSIONS.BOARDS_CREATE),
+  // requireWorkspacePermissions(PERMISSIONS.BOARDS_CREATE),
   async (req, res) => {
     const serviceResponse = await BoardController.create(req);
     return handleServiceResponse(serviceResponse, res);
@@ -92,7 +96,7 @@ route.post(
 route.get(
   '/',
   authenticateJWT,
-  requireWorkspacePermissions(PERMISSIONS.BOARDS_READ),
+  // requireWorkspacePermissions(PERMISSIONS.BOARDS_READ),
   async (req, res) => {
     const serviceResponse = await BoardController.findAll(req);
     return handleServiceResponse(serviceResponse, res);
@@ -273,7 +277,19 @@ route.patch(
  *       content:
  *         application/json:
  *           schema:
- *             $ref: '#/components/schemas/AddBoardMemberDto'
+ *             type: object
+ *             required:
+ *               - email
+ *               - roleId
+ *             properties:
+ *               email:
+ *                 type: string
+ *                 format: email
+ *                 example: user@example.com
+ *               roleId:
+ *                 type: string
+ *                 example: board_role_id
+ *                 description: Role Id (BOARD_ADMIN, BOARD_OWNER, BOARD_MEMBER, BOARD_OBSERVER)
  *     responses:
  *       201:
  *         description: Member added successfully
@@ -315,10 +331,14 @@ route.patch(
  *       404:
  *         description: Board, user, or role not found
  */
-route.post('/:id/invite', async (req, res) => {
-  const serviceResponse = await BoardController.addMemberToBoard(req);
-  return handleServiceResponse(serviceResponse, res);
-});
+route.post(
+  '/:id/invite',
+  validateHandle(addMemberToBoardSchema),
+  async (req, res) => {
+    const serviceResponse = await BoardController.addMemberToBoard(req);
+    return handleServiceResponse(serviceResponse, res);
+  }
+);
 
 /**
  * @swagger
