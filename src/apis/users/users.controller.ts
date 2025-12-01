@@ -8,7 +8,6 @@ import { StatusCodes } from 'http-status-codes';
 import { UpdateProfileDto } from './user.dto';
 import cloudinary from '@/config/cloudinary';
 
-
 const userService = new UserService();
 
 export class UserController {
@@ -55,46 +54,6 @@ export class UserController {
       return new ServiceResponse(
         ResponseStatus.Failed,
         'Error fetching user detail',
-        null,
-        StatusCodes.INTERNAL_SERVER_ERROR
-      );
-    }
-  }
-
-  static async getMe(req: Request): Promise<ServiceResponse<any>> {
-    try {
-      const userId = req.user?.userId;
-
-      if (!userId) {
-        return new ServiceResponse(
-          ResponseStatus.Failed,
-          'Unauthorized',
-          null,
-          StatusCodes.UNAUTHORIZED
-        );
-      }
-
-      const user = await userService.getDetailUser(userId);
-
-      if (!user) {
-        return new ServiceResponse(
-          ResponseStatus.Failed,
-          'User not found',
-          null,
-          StatusCodes.NOT_FOUND
-        );
-      }
-
-      return new ServiceResponse(
-        ResponseStatus.Success,
-        'Current user retrieved successfully',
-        user,
-        StatusCodes.OK
-      );
-    } catch {
-      return new ServiceResponse(
-        ResponseStatus.Failed,
-        'Error fetching current user',
         null,
         StatusCodes.INTERNAL_SERVER_ERROR
       );
@@ -196,7 +155,6 @@ export class UserController {
     }
   }
 
-
   static async updateAvatar(req: Request): Promise<ServiceResponse<any>> {
     try {
       const userId = req.user?.userId;
@@ -238,6 +196,4 @@ export class UserController {
       );
     }
   }
-
-
 }

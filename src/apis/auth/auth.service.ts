@@ -1,13 +1,14 @@
 import { AppDataSource } from '../../config/data-source';
 import { User } from '../../common/entities/user.entity';
 import { RefreshToken } from '../../common/entities/refresh-token.entity';
-import { LoginDto, RegisterDto } from './auth.dto';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import { generateJwt } from '../../common/utils/jwtUtils';
 import axios from 'axios';
 import { EmailService } from '../mail/mail.service';
 import { redisClient } from '@/config/redisClient';
+import { LoginInput, RegisterInput } from './auth.schema';
+import { UserService } from '../users/user.service';
 
 const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || 'default-refresh';
 
@@ -15,7 +16,8 @@ export class AuthService {
   private userRepository = AppDataSource.getRepository(User);
   private refreshTokenRepository = AppDataSource.getRepository(RefreshToken);
   private emailService = new EmailService();
-  async register(data: RegisterDto) {
+  private userService = new UserService();
+  async register(data: RegisterInput) {
     const existingEmail = await this.userRepository.findOne({
       where: { email: data.email },
     });
@@ -36,10 +38,12 @@ export class AuthService {
     };
   }
 
-  async login(data: LoginDto, userAgent?: string, ip?: string) {
-    const user = await this.userRepository.findOne({
-      where: { email: data.email },
-    });
+  async login(data: LoginInput, userAgent?: string, ip?: string) {
+    const user = await this.userRepository
+      .createQueryBuilder('user')
+      .select(['user.id', 'user.email', 'user.password', 'user.isActive'])
+      .where('user.email = :email', { email: data.email })
+      .getOne();
 
     if (!user) throw new Error('User not found');
     if (!user.isActive) throw new Error('Account is not active');
@@ -47,34 +51,30 @@ export class AuthService {
     const isPasswordValid = await bcrypt.compare(data.password, user.password);
     if (!isPasswordValid) throw new Error('Invalid password');
 
-    const refreshTokenEntity = this.refreshTokenRepository.create({
-      userId: user.id,
-      hash: 'temporary',
-      expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-      revoked: false,
-      userAgent,
-      ip,
-    });
+    const { password, ...userWithoutPassword } = user;
+    await redisClient.set(
+      `user:${user.id}`,
+      JSON.stringify(userWithoutPassword),
+      { EX: 900 }
+    );
+    const accessToken = generateJwt({ userId: user.id, email: user.email });
 
-    await this.refreshTokenRepository.save(refreshTokenEntity);
+    const refreshToken = jwt.sign(
+      { userId: user.id, email: user.email, jti: this.generateJti() },
+      JWT_REFRESH_SECRET,
+      { expiresIn: '7d' }
+    );
 
-    const accessToken = generateJwt({
-      userId: user.id,
-      email: user.email,
-    });
-
-    const refreshTokenPayload = {
-      userId: user.id,
-      email: user.email,
-      jti: refreshTokenEntity.jti,
-    };
-
-    const refreshToken = jwt.sign(refreshTokenPayload, JWT_REFRESH_SECRET, {
-      expiresIn: '7d',
-    });
-    const hashedRefreshToken = await bcrypt.hash(refreshToken, 10);
-    refreshTokenEntity.hash = hashedRefreshToken;
-    await this.refreshTokenRepository.save(refreshTokenEntity);
+    await this.refreshTokenRepository.save(
+      this.refreshTokenRepository.create({
+        userId: user.id,
+        hash: await bcrypt.hash(refreshToken, 10),
+        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+        revoked: false,
+        userAgent,
+        ip,
+      })
+    );
 
     return { message: 'Login successful', accessToken, refreshToken };
   }
@@ -208,23 +208,20 @@ export class AuthService {
     return { message: 'Reset password successfully' };
   }
 
-  async getMe(userId: string) {
-    const user = await this.userRepository.findOne({
-      where: { id: userId },
-      select: [
-        'id',
-        'name',
-        'email',
-        'bio',
-        'avatarUrl',
-        'isActive',
-        'createdAt',
-        'updatedAt',
-      ],
-    });
-
+  async getMe(id: string) {
+    let cached = await redisClient.get(`user:${id}`);
+    if (Buffer.isBuffer(cached)) {
+      cached = cached.toString('utf-8');
+    }
+    if (cached) return JSON.parse(cached);
+    const user = await this.userService.getDetailUser(id);
     if (!user) throw new Error('User not found');
-    return user;
+
+    const { password, ...userWithoutPassword } = user;
+    await redisClient.set(`user:${id}`, JSON.stringify(userWithoutPassword), {
+      EX: 900,
+    });
+    return userWithoutPassword;
   }
 
   async logout(refreshToken: string) {
