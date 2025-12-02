@@ -1,4 +1,5 @@
 import { NextFunction, Request, Response } from 'express';
+<<<<<<< HEAD
 import { rbacProvider, ResourceType, AccessResult } from '@/common/utils/rbac';
 import { Permission, PERMISSIONS } from '@/common/constants/permissions';
 import { Role, ROLES } from '@/common/constants/roles';
@@ -10,6 +11,39 @@ interface AuthorizationOptions {
   permission?: Permission;
   allowPublic?: boolean;
   errorMessage?: string;
+=======
+import { StatusCodes } from 'http-status-codes';
+import { RbacProvider } from '@/common/utils/rbac';
+import {
+  ResponseStatus,
+  ServiceResponse,
+} from '@/common/models/serviceResponse';
+import { handleServiceResponse } from '@/common/utils/httpHandlers';
+
+interface AuthenticatedRequest extends Request {
+  user?: {
+    userId: string;
+    email: string;
+    roles?: string[];
+    permissions?: string[];
+    [key: string]: any;
+  };
+  boardAccess?: {
+    visibility: 'public' | 'private' | 'workspace';
+    hasAccess: boolean;
+    accessLevel:
+      | 'public'
+      | 'guest'
+      | 'board-member'
+      | 'workspace-member'
+      | 'none';
+    isBoardMember: boolean;
+    isWorkspaceMember: boolean;
+    boardRole?: string;
+    workspaceRole?: string;
+    effectiveRole?: string;
+  };
+>>>>>>> 6f02d2c (feat: repair rbac)
 }
 
 function getResourceId(
@@ -33,6 +67,7 @@ function getResourceId(
 export function authorize(options: AuthorizationOptions) {
   return async (req: Request, res: Response, next: NextFunction) => {
     try {
+<<<<<<< HEAD
       const userId = req.user?.userId || null;
       const resourceId = getResourceId(req, options);
 
@@ -41,6 +76,59 @@ export function authorize(options: AuthorizationOptions) {
           success: false,
           message: `${options.resourceIdField} is required`,
         });
+=======
+      const authReq = req as AuthenticatedRequest;
+      if (!authReq.user) {
+        const serviceResponse = new ServiceResponse(
+          ResponseStatus.Failed,
+          'Unauthorized',
+          null,
+          StatusCodes.UNAUTHORIZED
+        );
+        return handleServiceResponse(serviceResponse, res);
+      }
+
+      const userId = authReq.user.userId;
+      const workspaceId =
+        (req.params as any).workspaceId ||
+        req.params.id ||
+        req.body.workspaceId ||
+        req.body.id ||
+        (req.query as any).workspaceId;
+
+      if (!workspaceId) {
+        const serviceResponse = new ServiceResponse(
+          ResponseStatus.Failed,
+          'Workspace ID required',
+          null,
+          StatusCodes.BAD_REQUEST
+        );
+        return handleServiceResponse(serviceResponse, res);
+      }
+
+      const permissions = await RbacProvider.getUserPermissionsInWorkspace(
+        userId,
+        workspaceId
+      );
+
+      console.log('Workspace Permissions:', permissions);
+
+      const userPerms = new Set(normalize(permissions));
+      const matches = requiredList.map((p) => userPerms.has(p));
+      const ok = matchAny ? matches.some(Boolean) : matches.every(Boolean);
+
+      if (!ok) {
+        const serviceResponse = new ServiceResponse(
+          ResponseStatus.Failed,
+          'Forbidden: Insufficient workspace permissions',
+          {
+            required: requiredList,
+            userPermissions: Array.from(userPerms),
+          },
+          StatusCodes.FORBIDDEN
+        );
+        return handleServiceResponse(serviceResponse, res);
+>>>>>>> 6f02d2c (feat: repair rbac)
       }
 
       let accessResult: AccessResult;
@@ -123,6 +211,7 @@ export function authorize(options: AuthorizationOptions) {
   };
 }
 
+<<<<<<< HEAD
 export function canAccessWorkspace(
   idField: string = 'workspaceId',
   idSource: 'params' | 'body' | 'query' = 'params'
@@ -240,10 +329,75 @@ export function requireWorkspaceRole(
         success: false,
         message: 'Role check failed',
       });
+=======
+export function checkBoardAccess() {
+  return async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const authReq = req as AuthenticatedRequest;
+      if (!authReq.user) {
+        const serviceResponse = new ServiceResponse(
+          ResponseStatus.Failed,
+          'Unauthorized',
+          null,
+          StatusCodes.UNAUTHORIZED
+        );
+        return handleServiceResponse(serviceResponse, res);
+      }
+
+      const userId = authReq.user.userId;
+      const boardId =
+        (req.params as any).boardId ||
+        req.params.id ||
+        req.body.boardId ||
+        (req.query as any).boardId;
+
+      if (!boardId) {
+        const serviceResponse = new ServiceResponse(
+          ResponseStatus.Failed,
+          'Board ID required',
+          null,
+          StatusCodes.BAD_REQUEST
+        );
+        return handleServiceResponse(serviceResponse, res);
+      }
+
+      // Lấy thông tin access với 4-layer strategy
+      const accessInfo = await RbacProvider.checkBoardAccess(userId, boardId);
+
+      console.log('🔒 Board Access Info:', {
+        boardId,
+        userId,
+        accessLevel: accessInfo.accessLevel,
+        effectiveRole: accessInfo.effectiveRole,
+        visibility: accessInfo.visibility,
+      });
+
+      // Kiểm tra quyền truy cập
+      if (!accessInfo.hasAccess) {
+        const serviceResponse = new ServiceResponse(
+          ResponseStatus.Failed,
+          `Access denied. This is a ${accessInfo.visibility} board and you don't have access.`,
+          {
+            visibility: accessInfo.visibility,
+            accessLevel: accessInfo.accessLevel,
+          },
+          StatusCodes.FORBIDDEN
+        );
+        return handleServiceResponse(serviceResponse, res);
+      }
+
+      // Lưu thông tin để các middleware sau sử dụng
+      authReq.boardAccess = accessInfo;
+
+      next();
+    } catch (err) {
+      next(err);
+>>>>>>> 6f02d2c (feat: repair rbac)
     }
   };
 }
 
+<<<<<<< HEAD
 export function requireBoardRole(
   allowedRoles: Role[],
   idField: string = 'boardId',
@@ -281,10 +435,66 @@ export function requireBoardRole(
 
       // Lấy effective role (cao nhất giữa board và workspace)
       const effectiveRole = await rbacProvider.getEffectiveBoardRole(
+=======
+export function requireBoardPermissions(
+  required: string[] | string,
+  options?: { any?: boolean; skipForPublicRead?: boolean }
+) {
+  const requiredList = normalize(
+    Array.isArray(required) ? required : [required]
+  );
+  const matchAny = options?.any === true;
+  const skipForPublicRead = options?.skipForPublicRead === true;
+
+  return async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const authReq = req as AuthenticatedRequest;
+      if (!authReq.user) {
+        const serviceResponse = new ServiceResponse(
+          ResponseStatus.Failed,
+          'Unauthorized',
+          null,
+          StatusCodes.UNAUTHORIZED
+        );
+        return handleServiceResponse(serviceResponse, res);
+      }
+
+      const userId = authReq.user.userId;
+      const boardId =
+        (req.params as any).boardId ||
+        req.params.id ||
+        req.body.boardId ||
+        (req.query as any).boardId;
+
+      if (!boardId) {
+        const serviceResponse = new ServiceResponse(
+          ResponseStatus.Failed,
+          'Board ID required',
+          null,
+          StatusCodes.BAD_REQUEST
+        );
+        return handleServiceResponse(serviceResponse, res);
+      }
+
+      // Nếu có boardAccess từ checkBoardAccess và thỏa điều kiện skip
+      if (skipForPublicRead && authReq.boardAccess) {
+        const { accessLevel } = authReq.boardAccess;
+        const isReadOnly = requiredList.every((p) => p.includes('read'));
+
+        if (accessLevel === 'public' && isReadOnly) {
+          // Public board + chỉ đọc => cho phép
+          return next();
+        }
+      }
+
+      // Lấy permissions của user trong board (đã bao gồm inherited permissions)
+      const permissions = await RbacProvider.getUserPermissionsInBoard(
+>>>>>>> 6f02d2c (feat: repair rbac)
         userId,
         boardId
       );
 
+<<<<<<< HEAD
       if (!effectiveRole) {
         return res.status(403).json({
           success: false,
@@ -297,6 +507,74 @@ export function requireBoardRole(
           success: false,
           message: 'Insufficient role privileges',
         });
+=======
+      console.log('🔐 Board Permissions:', {
+        boardId,
+        userId,
+        required: requiredList,
+        userPermissions: permissions,
+        accessLevel: authReq.boardAccess?.accessLevel,
+      });
+
+      const userPerms = new Set(normalize(permissions));
+      const matches = requiredList.map((p) => userPerms.has(p));
+      const ok = matchAny ? matches.some(Boolean) : matches.every(Boolean);
+
+      if (!ok) {
+        const serviceResponse = new ServiceResponse(
+          ResponseStatus.Failed,
+          'Forbidden: Insufficient board permissions',
+          {
+            required: requiredList,
+            userPermissions: Array.from(userPerms),
+          },
+          StatusCodes.FORBIDDEN
+        );
+        return handleServiceResponse(serviceResponse, res);
+      }
+
+      next();
+    } catch (err) {
+      next(err);
+    }
+  };
+}
+
+// Middleware kiểm tra permissions trong card
+export function requireCardPermissions(
+  required: string[] | string,
+  options?: { any?: boolean }
+) {
+  const requiredList = normalize(
+    Array.isArray(required) ? required : [required]
+  );
+  const matchAny = options?.any === true;
+
+  return async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const authReq = req as AuthenticatedRequest;
+      if (!authReq.user) {
+        const serviceResponse = new ServiceResponse(
+          ResponseStatus.Failed,
+          'Unauthorized',
+          null,
+          StatusCodes.UNAUTHORIZED
+        );
+        return handleServiceResponse(serviceResponse, res);
+      }
+
+      const userId = authReq.user.userId;
+      const cardId = req.params.cardId || req.body.cardId;
+
+      if (!cardId) {
+        const serviceResponse = new ServiceResponse(
+          ResponseStatus.Failed,
+          'Card ID required',
+          null,
+          StatusCodes.BAD_REQUEST
+        );
+        return handleServiceResponse(serviceResponse, res);
+>>>>>>> 6f02d2c (feat: repair rbac)
       }
 
       const boardMembership = await rbacProvider.getBoardMembership(
@@ -304,12 +582,33 @@ export function requireBoardRole(
         boardId
       );
 
+<<<<<<< HEAD
       req.userContext = {
         userId,
         boardRole: boardMembership?.role || effectiveRole,
         isWorkspaceMember: effectiveRole !== boardMembership?.role,
         isBoardMember: !!boardMembership,
       };
+=======
+      console.log('Card Permissions:', permissions);
+
+      const userPerms = new Set(normalize(permissions));
+      const matches = requiredList.map((p) => userPerms.has(p));
+      const ok = matchAny ? matches.some(Boolean) : matches.every(Boolean);
+
+      if (!ok) {
+        const serviceResponse = new ServiceResponse(
+          ResponseStatus.Failed,
+          'Forbidden: Insufficient card permissions',
+          {
+            required: requiredList,
+            userPermissions: Array.from(userPerms),
+          },
+          StatusCodes.FORBIDDEN
+        );
+        return handleServiceResponse(serviceResponse, res);
+      }
+>>>>>>> 6f02d2c (feat: repair rbac)
 
       next();
     } catch (error) {
@@ -365,12 +664,37 @@ export function requireWorkspacePermissions(
 ) {
   return async (req: Request, res: Response, next: NextFunction) => {
     try {
+<<<<<<< HEAD
       const userId = req.user?.userId;
       if (!userId) {
         return res.status(401).json({
           success: false,
           message: 'Authentication required',
         });
+=======
+      const authReq = req as AuthenticatedRequest;
+      if (!authReq.user) {
+        const serviceResponse = new ServiceResponse(
+          ResponseStatus.Failed,
+          'Unauthorized',
+          null,
+          StatusCodes.UNAUTHORIZED
+        );
+        return handleServiceResponse(serviceResponse, res);
+      }
+
+      const userId = authReq.user.userId;
+      const workspaceId = req.params.workspaceId || req.body.workspaceId;
+
+      if (!workspaceId) {
+        const serviceResponse = new ServiceResponse(
+          ResponseStatus.Failed,
+          'Workspace ID required',
+          null,
+          StatusCodes.BAD_REQUEST
+        );
+        return handleServiceResponse(serviceResponse, res);
+>>>>>>> 6f02d2c (feat: repair rbac)
       }
 
       let workspaceId: string | null = null;
@@ -397,11 +721,32 @@ export function requireWorkspacePermissions(
         userId,
         workspaceId
       );
+<<<<<<< HEAD
       if (!membership) {
         return res.status(403).json({
           success: false,
           message: 'Not a workspace member',
         });
+=======
+
+      console.log('Workspace Roles:', roles);
+
+      const userRoles = new Set(normalize(roles));
+      const matches = requiredList.map((r) => userRoles.has(r));
+      const ok = matchAny ? matches.some(Boolean) : matches.every(Boolean);
+
+      if (!ok) {
+        const serviceResponse = new ServiceResponse(
+          ResponseStatus.Failed,
+          'Forbidden: Insufficient workspace role',
+          {
+            required: requiredList,
+            userRoles: Array.from(userRoles),
+          },
+          StatusCodes.FORBIDDEN
+        );
+        return handleServiceResponse(serviceResponse, res);
+>>>>>>> 6f02d2c (feat: repair rbac)
       }
 
       for (const permission of permissions) {
@@ -441,6 +786,7 @@ export function requireBoardPermissions(
   idField: string = 'id',
   idSource: 'params' | 'body' | 'query' = 'params'
 ) {
+<<<<<<< HEAD
   // Normalize to array
   const permissionArray = Array.isArray(permissions)
     ? permissions
@@ -455,6 +801,30 @@ export function requireBoardPermissions(
           message: 'Authentication required',
         });
       }
+=======
+  try {
+    const authReq = req as AuthenticatedRequest;
+    if (!authReq.user) {
+      const serviceResponse = new ServiceResponse(
+        ResponseStatus.Failed,
+        'Unauthorized',
+        null,
+        StatusCodes.UNAUTHORIZED
+      );
+      return handleServiceResponse(serviceResponse, res);
+    }
+
+    const userId = authReq.user.userId;
+    if (!userId) {
+      const serviceResponse = new ServiceResponse(
+        ResponseStatus.Failed,
+        'Unauthorized',
+        null,
+        StatusCodes.UNAUTHORIZED
+      );
+      return handleServiceResponse(serviceResponse, res);
+    }
+>>>>>>> 6f02d2c (feat: repair rbac)
 
       let boardId: string | null = null;
       switch (idSource) {
