@@ -13,10 +13,9 @@ import {
 import { PERMISSIONS } from '@/common/constants/permissions';
 import { addMemberToBoardSchema } from './board.schema';
 import { ROLES } from '@/common/constants';
+import authenticateJWT from '@/common/middleware/authentication';
 import { ListController } from '../lists/list.controller';
 import { CreateListSchema } from '../lists/list.schema';
-import authenticateJWT from '@/common/middleware/authentication';
-
 const route = Router();
 
 /**
@@ -65,12 +64,11 @@ const route = Router();
  */
 route.post(
   '/',
-  authenticateJWT,
-  requireWorkspaceRoles(
-    [ROLES.WORKSPACE_ADMIN, ROLES.WORKSPACE_MEMBER, ROLES.WORKSPACE_MODERATOR],
-    'workspaceId',
-    'body'
-  ),
+  requireWorkspaceRoles([
+    ROLES.WORKSPACE_ADMIN,
+    ROLES.WORKSPACE_MEMBER,
+    ROLES.WORKSPACE_MODERATOR,
+  ]),
   async (req, res) => {
     const serviceResponse = await BoardController.create(req);
     return handleServiceResponse(serviceResponse, res);
@@ -189,15 +187,13 @@ route.get('/:id', authenticateJWT, checkBoardAccess('id'), async (req, res) => {
  */
 route.put(
   '/:id',
-  authenticateJWT,
-  checkBoardAccess('id'),
+  checkBoardAccess(),
   requireBoardPermissions(PERMISSIONS.BOARDS_UPDATE),
   async (req, res) => {
     const serviceResponse = await BoardController.update(req);
     return handleServiceResponse(serviceResponse, res);
   }
 );
-
 
 /**
  * @swagger
@@ -385,7 +381,7 @@ route.post(
   '/:id/invite',
   authenticateJWT,
   validateHandle(addMemberToBoardSchema),
-  checkBoardAccess('id'),
+  checkBoardAccess(),
   requireBoardPermissions(PERMISSIONS.MEMBERS_INVITE),
   async (req, res) => {
     const serviceResponse = await BoardController.addMemberToBoard(req);

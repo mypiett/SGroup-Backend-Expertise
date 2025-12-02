@@ -1,12 +1,16 @@
 import { Router } from 'express';
 import { WorkspaceController } from './workspace.controller';
 import { handleServiceResponse } from '@/common/utils/httpHandlers';
+<<<<<<< HEAD
 import authenticateJWT from '@/common/middleware/authentication';
 import {
   requireWorkspacePermissions,
   canAccessWorkspace,
   workspaceMember,
 } from '@/common/middleware/authorization';
+=======
+import { requireWorkspacePermissions } from '@/common/middleware/authorization';
+>>>>>>> 6f02d2c (feat: repair rbac)
 import { PERMISSIONS } from '@/common/constants/permissions';
 
 const route = Router();
@@ -197,7 +201,10 @@ route.get(
  */
 route.put(
   '/:id',
+<<<<<<< HEAD
   authenticateJWT,
+=======
+>>>>>>> 6f02d2c (feat: repair rbac)
   requireWorkspacePermissions([PERMISSIONS.WORKSPACES_UPDATE]),
   async (req, res) => {
     const serviceResponse = await WorkspaceController.updateWorkspace(req);
@@ -234,7 +241,10 @@ route.put(
  */
 route.delete(
   '/:id',
+<<<<<<< HEAD
   authenticateJWT,
+=======
+>>>>>>> 6f02d2c (feat: repair rbac)
   requireWorkspacePermissions([PERMISSIONS.WORKSPACES_DELETE]),
   async (req, res) => {
     const serviceResponse = await WorkspaceController.deleteWorkspace(req);
@@ -271,7 +281,10 @@ route.delete(
  */
 route.patch(
   '/:id/archive',
+<<<<<<< HEAD
   authenticateJWT,
+=======
+>>>>>>> 6f02d2c (feat: repair rbac)
   requireWorkspacePermissions([PERMISSIONS.WORKSPACES_DELETE]),
   async (req, res) => {
     const serviceResponse = await WorkspaceController.archiveWorkspace(req);
@@ -308,7 +321,10 @@ route.patch(
  */
 route.patch(
   '/:id/reopen',
+<<<<<<< HEAD
   authenticateJWT,
+=======
+>>>>>>> 6f02d2c (feat: repair rbac)
   requireWorkspacePermissions([PERMISSIONS.WORKSPACES_UPDATE]),
   async (req, res) => {
     const serviceResponse = await WorkspaceController.reopenWorkspace(req);
@@ -397,7 +413,10 @@ route.get(
  */
 route.post(
   '/:id/members',
+<<<<<<< HEAD
   authenticateJWT,
+=======
+>>>>>>> 6f02d2c (feat: repair rbac)
   requireWorkspacePermissions([PERMISSIONS.MEMBERS_INVITE]),
   async (req, res) => {
     const serviceResponse = await WorkspaceController.addMember(req);
@@ -454,7 +473,10 @@ route.post(
  */
 route.post(
   '/:id/invite',
+<<<<<<< HEAD
   authenticateJWT,
+=======
+>>>>>>> 6f02d2c (feat: repair rbac)
   requireWorkspacePermissions([PERMISSIONS.MEMBERS_INVITE]),
   async (req, res) => {
     const serviceResponse = await WorkspaceController.inviteMemberByEmail(req);
@@ -509,7 +531,10 @@ route.post(
  */
 route.patch(
   '/:id/members/:memberId',
+<<<<<<< HEAD
   authenticateJWT,
+=======
+>>>>>>> 6f02d2c (feat: repair rbac)
   requireWorkspacePermissions([PERMISSIONS.MEMBERS_MANAGE]),
   async (req, res) => {
     const serviceResponse = await WorkspaceController.updateMemberRole(req);
@@ -552,7 +577,10 @@ route.patch(
  */
 route.delete(
   '/:id/members/:memberId',
+<<<<<<< HEAD
   authenticateJWT,
+=======
+>>>>>>> 6f02d2c (feat: repair rbac)
   requireWorkspacePermissions([PERMISSIONS.MEMBERS_REMOVE]),
   async (req, res) => {
     const serviceResponse = await WorkspaceController.removeMember(req);
@@ -631,8 +659,12 @@ route.delete(
  */
 route.patch(
   '/:id/visibility',
+<<<<<<< HEAD
   authenticateJWT,
   requireWorkspacePermissions([PERMISSIONS.WORKSPACES_MANAGE]),
+=======
+  requireWorkspacePermissions([PERMISSIONS.WORKSPACES_UPDATE]),
+>>>>>>> 6f02d2c (feat: repair rbac)
   async (req, res) => {
     const serviceResponse = await WorkspaceController.updateVisibility(req);
     return handleServiceResponse(serviceResponse, res);
