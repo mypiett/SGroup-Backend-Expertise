@@ -8,16 +8,16 @@ export const ROLES = {
   ADMIN: 'admin',
 
   // Workspace level
-  WORKSPACE_ADMIN: 'workspace_admin',
-  WORKSPACE_MODERATOR: 'workspace_moderator',
-  WORKSPACE_MEMBER: 'workspace_member',
-  WORKSPACE_OBSERVER: 'workspace_observer',
+  WORKSPACE_ADMIN: 'workspace admin',
+  WORKSPACE_MODERATOR: 'workspace moderator',
+  WORKSPACE_MEMBER: 'workspace member',
+  WORKSPACE_OBSERVER: 'workspace observer',
 
   // Board level
-  BOARD_OWNER: 'board_owner',
-  BOARD_ADMIN: 'board_admin',
-  BOARD_MEMBER: 'board_member',
-  BOARD_OBSERVER: 'board_observer',
+  BOARD_OWNER: 'board owner',
+  BOARD_ADMIN: 'board admin',
+  BOARD_MEMBER: 'board member',
+  BOARD_OBSERVER: 'board observer',
 
   // User level
   USER: 'user',
