@@ -112,14 +112,14 @@ export class RbacProvider {
         : Promise.resolve([]),
     ]);
 
-    // 🔍 LAYER 2: Direct board permissions
+    // LAYER 2: Direct board permissions
     const directPermissions = boardMembers.flatMap((m) =>
       m.role.rolePermissions.map((rp) =>
         rp.permission.name.toLowerCase().trim()
       )
     );
 
-    // 🔍 LAYER 3: Inherited workspace permissions
+    // LAYER 3: Inherited workspace permissions
     // Workspace Admin/Owner → Full board permissions
     const workspaceRoles = workspaceMembers.map((m) =>
       m.role.name.toLowerCase().trim()
@@ -165,17 +165,6 @@ export class RbacProvider {
     return Array.from(new Set(allPermissions));
   }
 
-  /**
-   * 🔒 4-LAYER AUTHORIZATION STRATEGY
-   * Kiểm tra quyền truy cập board theo kiến trúc Hierarchical Scoped RBAC
-   *
-   * Layer 1: Visibility Check (Public access)
-   * Layer 2: Direct Board Membership (BoardMembers)
-   * Layer 3: Inherited Workspace Membership (WorkspaceMembers)
-   * Layer 4: Guest Access (Board member nhưng không phải workspace member)
-   *
-   * @returns Detailed access information với roles và permissions
-   */
   static async checkBoardAccess(
     userId: string,
     boardId: string
@@ -224,7 +213,7 @@ export class RbacProvider {
     const boardRole = boardMember?.role?.name.toLowerCase().trim();
     const workspaceRole = workspaceMember?.role?.name.toLowerCase().trim();
 
-    // 🔍 LAYER 1: Visibility Check
+    // LAYER 1: Visibility Check
     if (visibility === 'public') {
       return {
         visibility,
@@ -238,7 +227,7 @@ export class RbacProvider {
       };
     }
 
-    // 🔍 LAYER 2: Direct Board Membership
+    // LAYER 2: Direct Board Membership
     if (isBoardMember) {
       return {
         visibility,
@@ -252,7 +241,7 @@ export class RbacProvider {
       };
     }
 
-    // 🔍 LAYER 3: Inherited Workspace Membership
+    // LAYER 3: Inherited Workspace Membership
     if (visibility === 'workspace' && isWorkspaceMember) {
       // Workspace member có thể XEM board workspace visibility
       // Nhưng không có quyền SỬA trừ khi là workspace admin
@@ -274,7 +263,7 @@ export class RbacProvider {
       };
     }
 
-    // 🔍 LAYER 4: No Access
+    // LAYER 4: No Access
     return {
       visibility,
       hasAccess: false,
