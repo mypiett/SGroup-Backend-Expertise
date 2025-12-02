@@ -32,9 +32,9 @@ interface AuthenticatedRequest extends Request {
   };
 }
 
-// Chuẩn hóa danh sách (lowercase + trim)
+// Chuẩn hóa danh sách (lowercase + trim + remove extra spaces)
 function normalize(list?: string[]) {
-  return (list ?? []).map((x) => x.toLowerCase().trim());
+  return (list ?? []).map((x) => x.toLowerCase().trim().replace(/\s+/g, ' '));
 }
 
 // Middleware kiểm tra permissions trong workspace
@@ -143,7 +143,7 @@ export function checkBoardAccess() {
       // Lấy thông tin access với 4-layer strategy
       const accessInfo = await RbacProvider.checkBoardAccess(userId, boardId);
 
-      console.log('🔒 Board Access Info:', {
+      console.log('Board Access Info:', {
         boardId,
         userId,
         accessLevel: accessInfo.accessLevel,
@@ -232,7 +232,7 @@ export function requireBoardPermissions(
         boardId
       );
 
-      console.log('🔐 Board Permissions:', {
+      console.log('Board Permissions:', {
         boardId,
         userId,
         required: requiredList,
@@ -339,7 +339,8 @@ export function requireWorkspaceRoles(
   const requiredList = normalize(
     Array.isArray(required) ? required : [required]
   );
-  const matchAny = options?.any === true;
+  // Default là any = true khi có nhiều roles (user chỉ cần 1 trong các roles)
+  const matchAny = options?.any ?? requiredList.length > 1;
 
   return async (req: Request, res: Response, next: NextFunction) => {
     try {
