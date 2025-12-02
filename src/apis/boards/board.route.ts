@@ -1,18 +1,22 @@
 import { Router } from 'express';
 import { BoardController } from './board.controller';
-import { handleServiceResponse, validateHandle } from '@/common/utils/httpHandlers';
-import authenticateJWT from '@/common/middleware/authentication';
 import {
-  requireWorkspacePermissions,
+  handleServiceResponse,
+  validateHandle,
+} from '@/common/utils/httpHandlers';
+import {
+  checkBoardAccess,
   requireBoardPermissions,
+  requireWorkspaceRoles,
 } from '@/common/middleware/authorization';
 import { PERMISSIONS } from '@/common/constants/permissions';
 import { addMemberToBoardSchema } from './board.schema';
+import { ROLES } from '@/common/constants';
 const route = Router();
 
 /**
  * @swagger
- * /boards/create:
+ * /boards:
  *   post:
  *     tags:
  *       - Boards
@@ -54,7 +58,13 @@ const route = Router();
  *       401:
  *         description: Unauthorized
  */
-route.post('/', authenticateJWT, requireWorkspacePermissions(PERMISSIONS.BOARDS_CREATE),
+route.post(
+  '/',
+  requireWorkspaceRoles([
+    ROLES.WORKSPACE_ADMIN,
+    ROLES.WORKSPACE_MEMBER,
+    ROLES.WORKSPACE_MODERATOR,
+  ]),
   async (req, res) => {
     const serviceResponse = await BoardController.create(req);
     return handleServiceResponse(serviceResponse, res);
@@ -86,15 +96,10 @@ route.post('/', authenticateJWT, requireWorkspacePermissions(PERMISSIONS.BOARDS_
  *       401:
  *         description: Unauthorized
  */
-route.get(
-  '/',
-  authenticateJWT,
-  requireWorkspacePermissions(PERMISSIONS.BOARDS_READ),
-  async (req, res) => {
-    const serviceResponse = await BoardController.findAll(req);
-    return handleServiceResponse(serviceResponse, res);
-  }
-);
+route.get('/', async (req, res) => {
+  const serviceResponse = await BoardController.findAll(req);
+  return handleServiceResponse(serviceResponse, res);
+});
 
 /**
  * @swagger
@@ -103,7 +108,7 @@ route.get(
  *     tags:
  *       - Boards
  *     summary: Get board by ID
- *     description: Retrieve a specific board
+ *     description: Retrieve a specific board (access based on visibility)
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -119,17 +124,12 @@ route.get(
  *       404:
  *         description: Board not found
  *       403:
- *         description: Forbidden (no permission boards:read on this board)
+ *         description: Forbidden (access denied based on visibility)
  */
-route.get(
-  '/:id',
-  authenticateJWT,
-  requireBoardPermissions(PERMISSIONS.BOARDS_READ),
-  async (req, res) => {
-    const serviceResponse = await BoardController.findOne(req);
-    return handleServiceResponse(serviceResponse, res);
-  }
-);
+route.get('/:id', checkBoardAccess(), async (req, res) => {
+  const serviceResponse = await BoardController.findOne(req);
+  return handleServiceResponse(serviceResponse, res);
+});
 
 /**
  * @swagger
@@ -138,7 +138,7 @@ route.get(
  *     tags:
  *       - Boards
  *     summary: Update board
- *     description: Update board information
+ *     description: Update board information (requires board member permission)
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -174,18 +174,17 @@ route.get(
  *       404:
  *         description: Board not found
  *       403:
- *         description: Forbidden (no permission boards:update on this board)
+ *         description: Forbidden (requires boards:update permission)
  */
 route.put(
   '/:id',
-  authenticateJWT,
+  checkBoardAccess(),
   requireBoardPermissions(PERMISSIONS.BOARDS_UPDATE),
   async (req, res) => {
     const serviceResponse = await BoardController.update(req);
     return handleServiceResponse(serviceResponse, res);
   }
 );
-
 
 /**
  * @swagger
@@ -209,9 +208,11 @@ route.put(
  *         description: Board closed successfully
  *       404:
  *         description: Board not found
+ *       403:
+ *         description: Forbidden (requires boards:delete permission)
  */
 route.patch('/:id/archive', async (req, res) => {
-  const serviceResponse = await BoardController.closeBoard(req); 
+  const serviceResponse = await BoardController.closeBoard(req);
   return handleServiceResponse(serviceResponse, res);
 });
 
@@ -238,13 +239,12 @@ route.patch('/:id/archive', async (req, res) => {
  *       404:
  *         description: Board not found
  *       403:
- *         description: Forbidden (no permission boards:update on this board)
+ *         description: Forbidden (requires boards:update permission)
  */
-route.patch('/:id/reopen', async (req, res) => { 
+route.patch('/:id/reopen', async (req, res) => {
   const serviceResponse = await BoardController.reopenBoard(req);
   return handleServiceResponse(serviceResponse, res);
 });
-
 
 /**
  * @swagger
@@ -271,11 +271,10 @@ route.patch('/:id/reopen', async (req, res) => {
  *       500:
  *         description: Server Error
  */
-route.delete('/:id', async (req, res) => {  
+route.delete('/:id', async (req, res) => {
   const serviceResponse = await BoardController.deleteBoardPermanently(req);
   return handleServiceResponse(serviceResponse, res);
 });
-
 
 /**
  * @swagger
@@ -285,6 +284,8 @@ route.delete('/:id', async (req, res) => {
  *       - Boards
  *     summary: Invite a user to a board
  *     description: Add a member to a board and send an email notification. Only board owner or admin can invite.
+ *     security:
+ *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -355,6 +356,8 @@ route.delete('/:id', async (req, res) => {
 route.post(
   '/:id/invite',
   validateHandle(addMemberToBoardSchema),
+  checkBoardAccess(),
+  requireBoardPermissions(PERMISSIONS.MEMBERS_INVITE),
   async (req, res) => {
     const serviceResponse = await BoardController.addMemberToBoard(req);
     return handleServiceResponse(serviceResponse, res);
@@ -503,4 +506,3 @@ route.post('/:id/invite/:inviteToken', async (req, res) => {
 });
 
 export default route;
-
