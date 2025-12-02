@@ -3,10 +3,6 @@ node_modules/
 
 .env
 
-<<<<<<< HEAD
 docs/
 
 dist/
-=======
-docs/
->>>>>>> 6f02d2c (feat: repair rbac)
