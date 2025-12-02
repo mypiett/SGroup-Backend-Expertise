@@ -24,4 +24,3 @@ export interface AuthenticatedRequest extends Request {
     [key: string]: any;
   };
 }
-

@@ -314,5 +314,4 @@ export class BoardService {
     await this.boardRepository.remove(board);
     return { message: 'Board deleted permanently' };
   }
-
 }

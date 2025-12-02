@@ -1,6 +1,8 @@
 import { Router } from 'express';
 import { WorkspaceController } from './workspace.controller';
 import { handleServiceResponse } from '@/common/utils/httpHandlers';
+import { requireWorkspacePermissions } from '@/common/middleware/authorization';
+import { PERMISSIONS } from '@/common/constants/permissions';
 
 const route = Router();
 
@@ -183,10 +185,14 @@ route.get('/:id', async (req, res) => {
  *       500:
  *         description: Server Error
  */
-route.put('/:id', async (req, res) => {
-  const serviceResponse = await WorkspaceController.updateWorkspace(req);
-  return handleServiceResponse(serviceResponse, res);
-});
+route.put(
+  '/:id',
+  requireWorkspacePermissions([PERMISSIONS.WORKSPACES_UPDATE]),
+  async (req, res) => {
+    const serviceResponse = await WorkspaceController.updateWorkspace(req);
+    return handleServiceResponse(serviceResponse, res);
+  }
+);
 
 /**
  * @swagger
@@ -215,10 +221,14 @@ route.put('/:id', async (req, res) => {
  *       500:
  *         description: Server Error
  */
-route.delete('/:id', async (req, res) => {
-  const serviceResponse = await WorkspaceController.deleteWorkspace(req);
-  return handleServiceResponse(serviceResponse, res);
-});
+route.delete(
+  '/:id',
+  requireWorkspacePermissions([PERMISSIONS.WORKSPACES_DELETE]),
+  async (req, res) => {
+    const serviceResponse = await WorkspaceController.deleteWorkspace(req);
+    return handleServiceResponse(serviceResponse, res);
+  }
+);
 
 /**
  * @swagger
@@ -247,10 +257,14 @@ route.delete('/:id', async (req, res) => {
  *       500:
  *         description: Server Error
  */
-route.patch('/:id/archive', async (req, res) => {
-  const serviceResponse = await WorkspaceController.archiveWorkspace(req);
-  return handleServiceResponse(serviceResponse, res);
-});
+route.patch(
+  '/:id/archive',
+  requireWorkspacePermissions([PERMISSIONS.WORKSPACES_DELETE]),
+  async (req, res) => {
+    const serviceResponse = await WorkspaceController.archiveWorkspace(req);
+    return handleServiceResponse(serviceResponse, res);
+  }
+);
 
 /**
  * @swagger
@@ -279,10 +293,14 @@ route.patch('/:id/archive', async (req, res) => {
  *       500:
  *         description: Server Error
  */
-route.patch('/:id/reopen', async (req, res) => {
-  const serviceResponse = await WorkspaceController.reopenWorkspace(req);
-  return handleServiceResponse(serviceResponse, res);
-});
+route.patch(
+  '/:id/reopen',
+  requireWorkspacePermissions([PERMISSIONS.WORKSPACES_UPDATE]),
+  async (req, res) => {
+    const serviceResponse = await WorkspaceController.reopenWorkspace(req);
+    return handleServiceResponse(serviceResponse, res);
+  }
+);
 
 /**
  * @swagger
@@ -358,10 +376,14 @@ route.get('/:id/members', async (req, res) => {
  *       500:
  *         description: Server Error
  */
-route.post('/:id/members', async (req, res) => {
-  const serviceResponse = await WorkspaceController.addMember(req);
-  return handleServiceResponse(serviceResponse, res);
-});
+route.post(
+  '/:id/members',
+  requireWorkspacePermissions([PERMISSIONS.MEMBERS_INVITE]),
+  async (req, res) => {
+    const serviceResponse = await WorkspaceController.addMember(req);
+    return handleServiceResponse(serviceResponse, res);
+  }
+);
 
 /**
  * @swagger
@@ -410,10 +432,14 @@ route.post('/:id/members', async (req, res) => {
  *       500:
  *         description: Server Error
  */
-route.post('/:id/invite', async (req, res) => {
-  const serviceResponse = await WorkspaceController.inviteMemberByEmail(req);
-  return handleServiceResponse(serviceResponse, res);
-});
+route.post(
+  '/:id/invite',
+  requireWorkspacePermissions([PERMISSIONS.MEMBERS_INVITE]),
+  async (req, res) => {
+    const serviceResponse = await WorkspaceController.inviteMemberByEmail(req);
+    return handleServiceResponse(serviceResponse, res);
+  }
+);
 
 /**
  * @swagger
@@ -460,10 +486,14 @@ route.post('/:id/invite', async (req, res) => {
  *       500:
  *         description: Server Error
  */
-route.patch('/:id/members/:memberId', async (req, res) => {
-  const serviceResponse = await WorkspaceController.updateMemberRole(req);
-  return handleServiceResponse(serviceResponse, res);
-});
+route.patch(
+  '/:id/members/:memberId',
+  requireWorkspacePermissions([PERMISSIONS.MEMBERS_MANAGE]),
+  async (req, res) => {
+    const serviceResponse = await WorkspaceController.updateMemberRole(req);
+    return handleServiceResponse(serviceResponse, res);
+  }
+);
 
 /**
  * @swagger
@@ -498,10 +528,14 @@ route.patch('/:id/members/:memberId', async (req, res) => {
  *       500:
  *         description: Server Error
  */
-route.delete('/:id/members/:memberId', async (req, res) => {
-  const serviceResponse = await WorkspaceController.removeMember(req);
-  return handleServiceResponse(serviceResponse, res);
-});
+route.delete(
+  '/:id/members/:memberId',
+  requireWorkspacePermissions([PERMISSIONS.MEMBERS_REMOVE]),
+  async (req, res) => {
+    const serviceResponse = await WorkspaceController.removeMember(req);
+    return handleServiceResponse(serviceResponse, res);
+  }
+);
 
 /**
  * @swagger
@@ -572,9 +606,13 @@ route.delete('/:id/members/:memberId', async (req, res) => {
  *       500:
  *         description: Server Error
  */
-route.patch('/:id/visibility', async (req, res) => {
-  const serviceResponse = await WorkspaceController.updateVisibility(req);
-  return handleServiceResponse(serviceResponse, res);
-});
+route.patch(
+  '/:id/visibility',
+  requireWorkspacePermissions([PERMISSIONS.WORKSPACES_UPDATE]),
+  async (req, res) => {
+    const serviceResponse = await WorkspaceController.updateVisibility(req);
+    return handleServiceResponse(serviceResponse, res);
+  }
+);
 
 export default route;
