@@ -2,7 +2,7 @@ import { BoardMembers } from '@/common/entities/board-member.entity';
 import { CardMembers } from '@/common/entities/card-members.entity';
 import { WorkspaceMembers } from '@/common/entities/workspace-member.entity';
 import { AppDataSource } from '@/config/data-source';
-import { Board } from '@/common/entities/board.entity'; 
+import { Board } from '@/common/entities/board.entity';
 
 export class RbacProvider {
   // Lấy roles của user trong workspace

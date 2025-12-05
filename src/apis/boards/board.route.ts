@@ -1,6 +1,9 @@
 import { Router } from 'express';
 import { BoardController } from './board.controller';
-import { handleServiceResponse, validateHandle } from '@/common/utils/httpHandlers';
+import {
+  handleServiceResponse,
+  validateHandle,
+} from '@/common/utils/httpHandlers';
 import authenticateJWT from '@/common/middleware/authentication';
 import {
   requireWorkspacePermissions,
@@ -54,7 +57,10 @@ const route = Router();
  *       401:
  *         description: Unauthorized
  */
-route.post('/', authenticateJWT, requireWorkspacePermissions(PERMISSIONS.BOARDS_CREATE),
+route.post(
+  '/',
+  authenticateJWT,
+  requireWorkspacePermissions(PERMISSIONS.BOARDS_CREATE),
   async (req, res) => {
     const serviceResponse = await BoardController.create(req);
     return handleServiceResponse(serviceResponse, res);
@@ -186,7 +192,6 @@ route.put(
   }
 );
 
-
 /**
  * @swagger
  * /boards/{id}/archive:
@@ -211,7 +216,7 @@ route.put(
  *         description: Board not found
  */
 route.patch('/:id/archive', async (req, res) => {
-  const serviceResponse = await BoardController.closeBoard(req); 
+  const serviceResponse = await BoardController.closeBoard(req);
   return handleServiceResponse(serviceResponse, res);
 });
 
@@ -240,11 +245,10 @@ route.patch('/:id/archive', async (req, res) => {
  *       403:
  *         description: Forbidden (no permission boards:update on this board)
  */
-route.patch('/:id/reopen', async (req, res) => { 
+route.patch('/:id/reopen', async (req, res) => {
   const serviceResponse = await BoardController.reopenBoard(req);
   return handleServiceResponse(serviceResponse, res);
 });
-
 
 /**
  * @swagger
@@ -271,11 +275,10 @@ route.patch('/:id/reopen', async (req, res) => {
  *       500:
  *         description: Server Error
  */
-route.delete('/:id', async (req, res) => {  
+route.delete('/:id', async (req, res) => {
   const serviceResponse = await BoardController.deleteBoardPermanently(req);
   return handleServiceResponse(serviceResponse, res);
 });
-
 
 /**
  * @swagger
@@ -503,4 +506,3 @@ route.post('/:id/invite/:inviteToken', async (req, res) => {
 });
 
 export default route;
-
