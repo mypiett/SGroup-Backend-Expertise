@@ -4,6 +4,7 @@ import {
   handleServiceResponse,
   validateHandle,
 } from '@/common/utils/httpHandlers';
+import authenticateJWT from '@/common/middleware/authentication';
 import {
   checkBoardAccess,
   requireBoardPermissions,
