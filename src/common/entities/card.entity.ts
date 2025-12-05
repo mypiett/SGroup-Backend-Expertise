@@ -1,6 +1,7 @@
 import {
   Column,
   Entity,
+  Index,
   ManyToOne,
   OneToMany,
   PrimaryGeneratedColumn,
@@ -12,6 +13,10 @@ import { Comment } from './comment.entity';
 import { List } from './list.entity';
 
 @Entity('cards')
+@Index('idx_card_list_id', ['list'])
+@Index('idx_card_archived', ['isArchived'])
+@Index('idx_card_list_archived', ['list', 'isArchived'])
+@Index('idx_card_position', ['list', 'position'])
 export class Card extends DateTimeEntity {
   @PrimaryGeneratedColumn('uuid')
   public id: string;
@@ -22,7 +27,7 @@ export class Card extends DateTimeEntity {
   @Column({ type: 'text', nullable: true })
   description: string;
 
-  @Column({ type: 'int', default: 0 })
+  @Column({ type: 'float', default: 0 })
   position: number;
 
   @Column({ type: 'varchar', length: 255, nullable: true })
@@ -37,6 +42,9 @@ export class Card extends DateTimeEntity {
 
   @Column({ name: 'dueDate', type: 'date', nullable: true })
   dueDate: Date;
+
+  @Column({ type: 'boolean', default: false })
+  isArchived: boolean;
 
   @ManyToOne(() => List, (list) => list.cards)
   list: List;
