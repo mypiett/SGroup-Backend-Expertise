@@ -13,6 +13,9 @@ export class RefreshToken {
   @Column({ type: 'varchar', length: 255 })
   public userId: string;
 
+  @Column({ type: 'text' })
+  public hash: string;
+
   @Column({ type: 'timestamp' })
   public expiresAt: Date;
 
