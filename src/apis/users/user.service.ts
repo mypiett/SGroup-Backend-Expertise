@@ -68,4 +68,13 @@ export class UserService {
     await userRepository.save(user);
     return user;
   }
+
+  async findUserById(userId: string) {
+    const user = await this.userRepository.findOne({
+      where: { id: userId },
+    });
+
+    if (!user) throw new Error('User not found');
+    return user;
+  }
 }

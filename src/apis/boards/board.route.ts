@@ -481,3 +481,98 @@ route.post('/:id/invite/:inviteToken', async (req, res) => {
   return handleServiceResponse(serviceResponse, res);
 });
 export default route;
+
+/**
+ * @swagger
+ * /boards/{id}/transfer-ownership:
+ *   patch:
+ *     tags:
+ *       - Boards
+ *     summary: Transfer board ownership
+ *     description: Transfer ownership of the board to another user
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         description: Board ID
+ *         schema:
+ *           type: string
+ *       - in: body
+ *         name: newOwnerId
+ *         required: true
+ *         description: New user ID who will become the board owner
+ *         schema:
+ *           type: object
+ *           properties:
+ *             newOwnerId:
+ *               type: string
+ *               example: "507f1f77bcf86cd799439011"
+ *     responses:
+ *       200:
+ *         description: Ownership transferred successfully
+ *       400:
+ *         description: Invalid input
+ *       401:
+ *         description: Unauthorized
+ *       404:
+ *         description: Board or user not found
+ */
+route.patch('/:id/transfer-ownership', authenticateJWT, async (req, res) => {
+  const serviceResponse = await BoardController.transferOwnership(req);
+  return handleServiceResponse(serviceResponse, res);
+});
+
+/**
+ * @swagger
+ * /boards/{id}/settings:
+ *   patch:
+ *     tags:
+ *       - Boards
+ *     summary: Update board settings
+ *     description: Update visibility and permissions of the board
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         description: Board ID
+ *         schema:
+ *           type: string
+ *       - in: body
+ *         name: settings
+ *         description: Board settings
+ *         required: true
+ *         schema:
+ *           type: object
+ *           properties:
+ *             visibility:
+ *               type: string
+ *               enum: [private, workspace, public]
+ *               example: private
+ *             permissions:
+ *               type: array
+ *               items:
+ *                 type: string
+ *               example: ["read", "write", "admin"]
+ *     responses:
+ *       200:
+ *         description: Board settings updated successfully
+ *       403:
+ *         description: Forbidden (user is not board admin)
+ *       400:
+ *         description: Invalid visibility or permissions
+ *       500:
+ *         description: Server Error
+ */
+route.patch(
+  '/:id/settings',
+  authenticateJWT,
+  requireBoardPermissions(PERMISSIONS.BOARDS_UPDATE), 
+  async (req, res) => {
+    const serviceResponse = await BoardController.updateSettings(req);
+    return handleServiceResponse(serviceResponse, res);
+  }
+);

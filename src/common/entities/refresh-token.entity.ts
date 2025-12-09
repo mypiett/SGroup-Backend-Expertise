@@ -13,7 +13,7 @@ export class RefreshToken {
   @Column({ type: 'varchar', length: 255 })
   public userId: string;
 
-  @Column({ type: 'varchar', length: 255 })
+  @Column({ type: 'varchar', length: 255,  nullable: true })  //thêm nullable: true, cần anh chị em xem lại
   public hash: string;
 
   @Column({ type: 'timestamp' })

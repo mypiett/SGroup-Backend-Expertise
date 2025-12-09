@@ -7,6 +7,8 @@ import {
 import { StatusCodes } from 'http-status-codes';
 
 const boardService = new BoardService();
+import { UserService } from '../users/user.service'; // chỉnh đường dẫn cho đúng
+const userService = new UserService();
 
 export class BoardController {
   static async create(req: Request): Promise<ServiceResponse<any>> {
@@ -270,6 +272,131 @@ export class BoardController {
         error.message,
         null,
         StatusCodes.BAD_REQUEST
+      );
+    }
+  }
+
+  static async transferOwnership(req: Request): Promise<ServiceResponse<any>> {
+    try {
+      const boardId = req.params.id;
+      const { newOwnerId } = req.body;
+
+      // Kiểm tra board có tồn tại không
+      const board = await boardService.getBoardById(boardId);
+
+      // Kiểm tra người yêu cầu có phải là BOARD_OWNER không
+      const currentOwner = await boardService.getBoardOwner(boardId);
+      if (currentOwner.userId !== req.user?.userId) {
+        return new ServiceResponse(
+          ResponseStatus.Failed,
+          'Only the current owner can transfer ownership',
+          null,
+          StatusCodes.FORBIDDEN
+        );
+      }
+
+      // Kiểm tra xem user mới có tồn tại không
+      const newOwner = await userService.findUserById(newOwnerId); // dùng findUserById
+      if (!newOwner) {
+        return new ServiceResponse(
+          ResponseStatus.Failed,
+          'New owner not found',
+          null,
+          StatusCodes.NOT_FOUND
+        );
+      }
+
+      // Chuyển quyền sở hữu
+      const updatedBoard = await boardService.transferOwnership(boardId, newOwnerId);
+
+      return new ServiceResponse(
+        ResponseStatus.Success,
+        'Ownership transferred successfully',
+        updatedBoard,
+        StatusCodes.OK
+      );
+    } catch (error: any) {
+      return new ServiceResponse(
+        ResponseStatus.Failed,
+        error.message || 'Error transferring ownership',
+        null,
+        StatusCodes.BAD_REQUEST
+      );
+    }
+  }
+
+  static async updateSettings(req: Request): Promise<ServiceResponse<any>> {
+    try {
+      const { id } = req.params;
+      const { visibility, permissions } = req.body;
+
+
+      const validVisibilities = ['private', 'workspace', 'public'];
+      if (!validVisibilities.includes(visibility)) {
+        return new ServiceResponse(
+          ResponseStatus.Failed,
+          'Invalid visibility value',
+          null,
+          StatusCodes.BAD_REQUEST
+        );
+      }
+
+      // Validate permissions
+      if (!Array.isArray(permissions)) {
+        return new ServiceResponse(
+          ResponseStatus.Failed,
+          'Permissions must be an array',
+          null,
+          StatusCodes.BAD_REQUEST
+        );
+      }
+
+      // Kiểm tra quyền admin của user
+      const userId = req.user?.userId;
+      const isAdmin = await boardService.checkBoardAdmin(id, userId);
+      if (!isAdmin) {
+        return new ServiceResponse(
+          ResponseStatus.Failed,
+          'User is not an admin of this board',
+          null,
+          StatusCodes.FORBIDDEN
+        );
+      }
+
+      const updatedBoard = await boardService.updateBoardSettings(id, visibility, permissions);
+
+      return new ServiceResponse(
+        ResponseStatus.Success,
+        'Board settings updated successfully',
+        updatedBoard,
+        StatusCodes.OK
+      );
+    } catch (error: any) {
+      const msg = error.message as string;
+
+      if (msg === 'Board not found') {
+        return new ServiceResponse(
+          ResponseStatus.Failed,
+          msg,
+          null,
+          StatusCodes.NOT_FOUND
+        );
+      }
+
+      if (msg === 'User is not a member of the board') {
+        return new ServiceResponse(
+          ResponseStatus.Failed,
+          msg,
+          null,
+          StatusCodes.FORBIDDEN
+        );
+      }
+
+      return new ServiceResponse(
+        ResponseStatus.Failed,
+        msg || 'Error updating board settings',
+        null,
+        StatusCodes.INTERNAL_SERVER_ERROR
       );
     }
   }

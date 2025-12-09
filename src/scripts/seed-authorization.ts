@@ -21,7 +21,7 @@ export class AuthorizationSeeder {
       { name: 'boards:create', description: 'Create new boards' },
       { name: 'boards:read', description: 'View boards and their content' },
       { name: 'boards:update', description: 'Edit board details and settings' },
-      { name: 'boards:delete', description: 'Delete boards' },
+      { name: 'boards:delete', description: 'Delete boards' },      
       {
         name: 'boards:manage',
         description: 'Full board management including member management',
