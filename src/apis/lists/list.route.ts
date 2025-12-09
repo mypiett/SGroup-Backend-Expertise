@@ -9,11 +9,62 @@ import {
   MoveListToBoardSchema,
   MoveAllCardsSchema,
   CopyListSchema,
+  CreateListSchema,
 } from './list.schema';
 
 const route = Router();
 
+route.get('/boards/:boardId/lists', async (req, res) => {
+  const response = await ListController.getAllListsByBoard(req);
+  return handleServiceResponse(response, res);
+});
+
 /**
+ * @swagger
+ * /boards/{boardId}/lists:
+ *   post:
+ *     tags:
+ *       - Lists
+ *     summary: Create a new list in a board
+ *     parameters:
+ *       - in: path
+ *         name: boardId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: ID of the board
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - title
+ *             properties:
+ *               title:
+ *                 type: string
+ *                 example: "New List"
+ *     responses:
+ *       201:
+ *         description: List created successfully
+ *       400:
+ *         description: Invalid input
+ *       404:
+ *         description: Board not found
+ */
+route.post(
+  '/boards/:boardId/lists',
+  validateRequest(CreateListSchema),
+  async (req, res) => {
+    const response = await ListController.createList(req);
+    return handleServiceResponse(response, res);
+  }
+);
+
+/**
+ *
  * @swagger
  * /lists/{id}/archive:
  *   patch:
