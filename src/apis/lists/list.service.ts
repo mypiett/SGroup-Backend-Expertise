@@ -67,7 +67,6 @@ export class ListService {
     targetListId: string,
     targetBoardId?: string
   ) {
-    // Validate song song thay vì tuần tự
     const [sourceList, targetList, targetBoard] = await Promise.all([
       this.listRepository.findListById(sourceListId, false),
       this.listRepository.findListById(targetListId, false),
@@ -119,7 +118,7 @@ export class ListService {
     const newPosition = position ?? maxPosition + 1;
     const newTitle = title || `${sourceList.title} (Copy)`;
 
-    // Sử dụng transaction với bulk insert - NHANH HƠN 10-100 LẦN
+    // Sử dụng transaction với bulk insert
     const result = await this.listRepository.copyListWithCards(
       sourceList,
       targetBoard,

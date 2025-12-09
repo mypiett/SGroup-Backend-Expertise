@@ -12,21 +12,24 @@ export class ListRepository {
     listId: string,
     includeCards = false
   ): Promise<List | null> {
-    const relations = ['board'];
+    const query = this.listRepository
+      .createQueryBuilder('list')
+      .leftJoinAndSelect('list.board', 'board')
+      .where('list.id = :listId', { listId });
+
     if (includeCards) {
-      relations.push('cards');
+      query.leftJoinAndSelect('list.cards', 'cards');
     }
-    return await this.listRepository.findOne({
-      where: { id: listId },
-      relations,
-      cache: 5000,
-    });
+
+    return await query.getOne();
   }
 
   async findBoardById(boardId: string): Promise<Board | null> {
-    return await this.boardRepository.findOne({
-      where: { id: boardId },
-    });
+    return await this.boardRepository
+      .createQueryBuilder('board')
+      .select(['board.id', 'board.title', 'board.isClosed'])
+      .where('board.id = :boardId', { boardId })
+      .getOne();
   }
 
   async updateList(listId: string, data: Partial<List>): Promise<List> {
@@ -79,7 +82,8 @@ export class ListRepository {
   ): Promise<Card[]> {
     const query = this.cardRepository
       .createQueryBuilder('card')
-      .where('card.listId = :listId', { listId });
+      .where('card.listId = :listId', { listId })
+      .cache(`cards_list_${listId}_${includeArchived}`, 30000); // Cache 30s
 
     if (!includeArchived) {
       query.andWhere('card.isArchived = :isArchived', { isArchived: false });
@@ -94,6 +98,7 @@ export class ListRepository {
       .createQueryBuilder('card')
       .select('card.id')
       .where('card.listId = :listId', { listId })
+      .cache(`card_ids_list_${listId}`, 15000) // Cache 15s
       .getMany();
     return cards.map((c) => c.id);
   }
@@ -105,10 +110,10 @@ export class ListRepository {
   ): Promise<void> {
     if (cardIds.length === 0) return;
 
-    // Bulk update trong 1 query thay vì loop - TỐI ƯU TỪ N queries -> 1 query
-    const updateData: any = { list: { id: targetListId } };
+    // Use raw column names for better performance
+    const updateData: any = { listId: targetListId };
     if (targetBoardId) {
-      updateData.board = { id: targetBoardId };
+      updateData.boardId = targetBoardId;
     }
 
     await this.cardRepository
@@ -135,6 +140,7 @@ export class ListRepository {
       .createQueryBuilder('list')
       .select('MAX(list.position)', 'maxPosition')
       .where('list.boardId = :boardId', { boardId })
+      .cache(`max_position_board_${boardId}`, 10000) // Cache 10s
       .getRawOne();
     return result?.maxPosition ?? -1;
   }
@@ -146,7 +152,6 @@ export class ListRepository {
     position: number,
     sourceCards: Card[]
   ): Promise<{ list: List; copiedCount: number }> {
-    // TRANSACTION - đảm bảo ACID và performance
     return await AppDataSource.transaction(
       async (transactionalEntityManager) => {
         // Create list
@@ -158,7 +163,7 @@ export class ListRepository {
         });
         const savedList = await transactionalEntityManager.save(newList);
 
-        // Bulk insert cards nếu có - NHANH HƠN NHIỀU
+        // Bulk insert cards with boardId if any exist
         if (sourceCards.length > 0) {
           const cardData = sourceCards.map((sourceCard) => ({
             title: sourceCard.title,
@@ -168,10 +173,11 @@ export class ListRepository {
             priority: sourceCard.priority,
             dueDate: sourceCard.dueDate,
             isArchived: false,
-            list: savedList,
+            listId: savedList.id,
+            boardId: targetBoard.id,
           }));
 
-          // Bulk insert trong 1 query
+          // Bulk insert in one query
           await transactionalEntityManager
             .createQueryBuilder()
             .insert()

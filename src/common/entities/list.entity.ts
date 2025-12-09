@@ -17,6 +17,7 @@ import { Card } from './card.entity';
 @Index('idx_list_archived', ['isArchived'])
 @Index('idx_list_board_position', ['board', 'position'])
 @Index('idx_list_board_archived', ['board', 'isArchived'])
+@Index('idx_list_board_archived_position', ['board', 'isArchived', 'position'])
 export class List extends DateTimeEntity {
   @PrimaryGeneratedColumn('uuid')
   public id: string;

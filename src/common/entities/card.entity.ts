@@ -2,6 +2,7 @@ import {
   Column,
   Entity,
   Index,
+  JoinColumn,
   ManyToOne,
   OneToMany,
   PrimaryGeneratedColumn,
@@ -11,12 +12,16 @@ import { DateTimeEntity } from './base/dateTimeEntity';
 import { CardMembers } from './card-members.entity';
 import { Comment } from './comment.entity';
 import { List } from './list.entity';
+import { Board } from './board.entity';
 
 @Entity('cards')
 @Index('idx_card_list_id', ['list'])
+@Index('idx_card_board_id', ['board'])
 @Index('idx_card_archived', ['isArchived'])
 @Index('idx_card_list_archived', ['list', 'isArchived'])
+@Index('idx_card_board_archived', ['board', 'isArchived'])
 @Index('idx_card_position', ['list', 'position'])
+@Index('idx_card_board_list', ['board', 'list'])
 export class Card extends DateTimeEntity {
   @PrimaryGeneratedColumn('uuid')
   public id: string;
@@ -47,7 +52,12 @@ export class Card extends DateTimeEntity {
   isArchived: boolean;
 
   @ManyToOne(() => List, (list) => list.cards)
+  @JoinColumn({ name: 'listId' })
   list: List;
+
+  @ManyToOne(() => Board, { onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'boardId' })
+  board: Board;
 
   @OneToMany(() => CardMembers, (cardMember) => cardMember.card)
   public cardMembers: CardMembers[];

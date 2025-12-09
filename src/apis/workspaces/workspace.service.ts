@@ -410,7 +410,7 @@ export class WorkspaceService {
 
     await this.workspaceMemberRepository.save(newMember);
 
-    // ✅ OPTIMIZATION: Select chỉ fields cần thiết, loại bỏ password
+    // OPTIMIZATION: Select chỉ fields cần thiết, loại bỏ password
     const savedMember = await this.workspaceMemberRepository
       .createQueryBuilder('wm')
       .leftJoinAndSelect('wm.user', 'user')
@@ -517,7 +517,7 @@ export class WorkspaceService {
       .where('id = :memberId', { memberId })
       .execute();
 
-    // ✅ OPTIMIZATION: Select chỉ fields cần thiết cho updated member
+    // OPTIMIZATION: Select chỉ fields cần thiết cho updated member
     const updatedMember = await this.workspaceMemberRepository
       .createQueryBuilder('wm')
       .leftJoinAndSelect('wm.user', 'user')

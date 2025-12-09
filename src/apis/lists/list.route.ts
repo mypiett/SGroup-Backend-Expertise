@@ -144,7 +144,7 @@ route.patch(
  *       404:
  *         description: List or board not found
  */
-route.put(
+route.patch(
   '/:id/move',
   validateRequest(MoveListToBoardSchema),
   async (req, res) => {
