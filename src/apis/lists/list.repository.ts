@@ -49,7 +49,7 @@ export class ListRepository {
 
   async bulkArchiveCards(cardIds: string[]): Promise<void> {
     if (cardIds.length === 0) return;
-    // Bulk update thay vì loop - CRITICAL OPTIMIZATION
+    // Bulk update thay vì loop
     await this.cardRepository
       .createQueryBuilder()
       .update(Card)
@@ -83,7 +83,7 @@ export class ListRepository {
     const query = this.cardRepository
       .createQueryBuilder('card')
       .where('card.listId = :listId', { listId })
-      .cache(`cards_list_${listId}_${includeArchived}`, 30000); // Cache 30s
+      .cache(`cards_list_${listId}_${includeArchived}`, 30000);
 
     if (!includeArchived) {
       query.andWhere('card.isArchived = :isArchived', { isArchived: false });
@@ -98,7 +98,7 @@ export class ListRepository {
       .createQueryBuilder('card')
       .select('card.id')
       .where('card.listId = :listId', { listId })
-      .cache(`card_ids_list_${listId}`, 15000) // Cache 15s
+      .cache(`card_ids_list_${listId}`, 15000)
       .getMany();
     return cards.map((c) => c.id);
   }
@@ -140,7 +140,7 @@ export class ListRepository {
       .createQueryBuilder('list')
       .select('MAX(list.position)', 'maxPosition')
       .where('list.boardId = :boardId', { boardId })
-      .cache(`max_position_board_${boardId}`, 10000) // Cache 10s
+      .cache(`max_position_board_${boardId}`, 10000)
       .getRawOne();
     return result?.maxPosition ?? -1;
   }
