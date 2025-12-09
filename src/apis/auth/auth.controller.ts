@@ -180,7 +180,7 @@ export class AuthController {
     }
     try {
       await authService.forgetPassword(email);
-      await redisClient.set(
+      redisClient.set(
         `lastSentRequestForgotPassword:${email}`,
         Date.now().toString(),
         { EX: 60 }

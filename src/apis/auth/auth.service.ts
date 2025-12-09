@@ -39,11 +39,10 @@ export class AuthService {
   }
 
   async login(data: LoginInput, userAgent?: string, ip?: string) {
-    const user = await this.userRepository
-      .createQueryBuilder('user')
-      .select(['user.id', 'user.email', 'user.password', 'user.isActive'])
-      .where('user.email = :email', { email: data.email })
-      .getOne();
+    const user = await this.userRepository.findOne({
+      where: { email: data.email },
+      select: ['id', 'email', 'password', 'isActive'],
+    });
 
     if (!user) throw new Error('User not found');
     if (!user.isActive) throw new Error('Account is not active');
@@ -52,11 +51,9 @@ export class AuthService {
     if (!isPasswordValid) throw new Error('Invalid password');
 
     const { password, ...userWithoutPassword } = user;
-    await redisClient.set(
-      `user:${user.id}`,
-      JSON.stringify(userWithoutPassword),
-      { EX: 900 }
-    );
+    redisClient.set(`user:${user.id}`, JSON.stringify(userWithoutPassword), {
+      EX: 900,
+    });
     const accessToken = generateJwt({ userId: user.id, email: user.email });
 
     const refreshToken = jwt.sign(
@@ -65,10 +62,10 @@ export class AuthService {
       { expiresIn: '7d' }
     );
 
-    await this.refreshTokenRepository.save(
+    this.refreshTokenRepository.save(
       this.refreshTokenRepository.create({
         userId: user.id,
-        hash: await bcrypt.hash(refreshToken, 10),
+        hash: refreshToken,
         expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
         revoked: false,
         userAgent,
@@ -175,25 +172,28 @@ export class AuthService {
   }
 
   async forgetPassword(email: string) {
-    const user = await this.userRepository.findOne({
-      where: { email, isActive: true },
-    });
+    const user = await this.getUserByEmailFast(email);
     if (!user) throw new Error('User not found!');
     const code = Math.floor(100000 + Math.random() * 900000).toString();
     const oldFotgetPasswordCode = await redisClient.get(
       `forgetPassword:${email}`
     );
     if (oldFotgetPasswordCode) {
-      await redisClient.del(`forgetPassword:${oldFotgetPasswordCode}`);
+      redisClient.del(`forgetPassword:${oldFotgetPasswordCode}`);
     }
-    await redisClient.set(`forgetPassword:${email}`, code, { EX: 15 * 60 });
-    await redisClient.set(`forgetPasswordCode:${code}`, email, { EX: 15 * 60 });
-    await this.emailService.sendForgotPasswordEmail(email, code);
+    const pipeline = redisClient.multi();
+
+    pipeline.set(`forgetPassword:${email}`, code, { EX: 900 });
+    pipeline.set(`forgetPasswordCode:${code}`, email, { EX: 900 });
+
+    pipeline.exec();
+
+    this.emailService.sendForgotPasswordEmail(email, code);
     return { message: 'Verification code sent to your email' };
   }
 
   async resetPassword(email: string, newPassword: string, code: string) {
-    const user = await this.userRepository.findOne({ where: { email } });
+    const user = await this.getUserByEmailFast(email);
     if (!user) throw new Error('User not found');
     const savedCode = await redisClient.get(`forgetPassword:${email}`);
     if (!savedCode) throw new Error('Code expired or invalid');
@@ -204,7 +204,7 @@ export class AuthService {
     }
     user.password = newHashedPassword;
     await this.userRepository.save(user);
-    await redisClient.del(`forgetPassword:${email}`);
+    redisClient.del(`forgetPassword:${email}`);
     return { message: 'Reset password successfully' };
   }
 
@@ -245,5 +245,13 @@ export class AuthService {
 
   private generateJti(): string {
     return `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+  }
+
+  async getUserByEmailFast(email: string) {
+    const result = await AppDataSource.query(
+      `SELECT id,password FROM users WHERE email = $1 AND "isActive" = true LIMIT 1`,
+      [email]
+    );
+    return result[0];
   }
 }

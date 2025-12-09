@@ -25,12 +25,12 @@ export class EmailService {
   async sendVerificationEmail(email: string) {
     const oldToken = await redisClient.get(`email:${email}`);
     if (oldToken) {
-      await redisClient.del(`verify:${oldToken}`);
+      redisClient.del(`verify:${oldToken}`);
     }
     const token = uuidv4();
     const ttl = 15 * 60;
-    await redisClient.set(`verify:${token}`, email, { EX: ttl });
-    await redisClient.set(`email:${email}`, token, { EX: ttl });
+    redisClient.set(`verify:${token}`, email, { EX: ttl });
+    redisClient.set(`email:${email}`, token, { EX: ttl });
 
     const link = `${process.env.BACKEND_URL}/auth/verify-email?token=${token}`;
     console.log(`[TEST] Verification link for ${email}: ${link}`);
@@ -52,7 +52,7 @@ export class EmailService {
   }
 
   async sendForgotPasswordEmail(email: string, code: string) {
-    await this.transporter.sendMail({
+    this.transporter.sendMail({
       to: email,
       subject: 'Reset your password',
       html: `
