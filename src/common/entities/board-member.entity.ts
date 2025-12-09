@@ -1,6 +1,7 @@
 import {
   Column,
   Entity,
+  Index,
   JoinColumn,
   ManyToOne,
   PrimaryGeneratedColumn,
@@ -14,6 +15,11 @@ import { User } from './user.entity';
 
 @Entity('board_members')
 @Unique(['userId', 'boardId'])
+// ✅ PERFORMANCE INDEXES
+@Index('idx_board_member_user_id', ['userId'])
+@Index('idx_board_member_board_id', ['boardId'])
+@Index('idx_board_member_role_id', ['roleId'])
+@Index('idx_board_member_board_role', ['boardId', 'roleId'])
 export class BoardMembers extends DateTimeEntity {
   @PrimaryGeneratedColumn('uuid')
   public id: string;

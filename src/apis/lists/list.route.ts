@@ -37,23 +37,19 @@ const route = Router();
  *       404:
  *         description: List not found
  */
-route.patch(
-  '/lists/:id/archive',
-  validateRequest(ListIdSchema),
-  async (req, res) => {
-    const listId = req.params.id;
-    const response = await ListController.archiveList(listId);
-    return handleServiceResponse(response, res);
-  }
-);
+route.patch('/:id/archive', validateRequest(ListIdSchema), async (req, res) => {
+  const listId = req.params.id;
+  const response = await ListController.archiveList(listId);
+  return handleServiceResponse(response, res);
+});
 
 /**
  * @swagger
- * /lists/{id}/unarchive:
+ * /lists/{id}/reopen:
  *   patch:
  *     tags:
  *       - Lists
- *     summary: Unarchive a list
+ *     summary: reopen a list
  *     description: Restore an archived list
  *     parameters:
  *       - in: path
@@ -65,21 +61,17 @@ route.patch(
  *           format: uuid
  *     responses:
  *       200:
- *         description: List unarchived successfully
+ *         description: List reopend successfully
  *       400:
  *         description: Invalid input
  *       404:
  *         description: List not found
  */
-route.patch(
-  '/lists/:id/unarchive',
-  validateRequest(ListIdSchema),
-  async (req, res) => {
-    const listId = req.params.id;
-    const response = await ListController.unarchiveList(listId);
-    return handleServiceResponse(response, res);
-  }
-);
+route.patch('/:id/reopen', validateRequest(ListIdSchema), async (req, res) => {
+  const listId = req.params.id;
+  const response = await ListController.unarchiveList(listId);
+  return handleServiceResponse(response, res);
+});
 
 /**
  * @swagger
@@ -106,7 +98,7 @@ route.patch(
  *         description: List not found
  */
 route.patch(
-  '/lists/:id/archive-cards',
+  '/:id/archive-all-cards',
   validateRequest(ListIdSchema),
   async (req, res) => {
     const listId = req.params.id;
@@ -153,7 +145,7 @@ route.patch(
  *         description: List or board not found
  */
 route.put(
-  '/lists/:id/move',
+  '/:id/move',
   validateRequest(MoveListToBoardSchema),
   async (req, res) => {
     const listId = req.params.id;
@@ -206,7 +198,7 @@ route.put(
  *         description: List not found
  */
 route.patch(
-  '/lists/:id/move-all-cards',
+  '/:id/move-all-cards',
   validateRequest(MoveAllCardsSchema),
   async (req, res) => {
     const listId = req.params.id;
@@ -267,20 +259,16 @@ route.patch(
  *       404:
  *         description: Source list or target board not found
  */
-route.post(
-  '/lists/:id/copy',
-  validateRequest(CopyListSchema),
-  async (req, res) => {
-    const listId = req.params.id;
-    const { targetBoardId, title, position } = req.body;
-    const response = await ListController.copyListToBoard(
-      listId,
-      targetBoardId,
-      title,
-      position
-    );
-    return handleServiceResponse(response, res);
-  }
-);
+route.post('/:id/copy', validateRequest(CopyListSchema), async (req, res) => {
+  const listId = req.params.id;
+  const { targetBoardId, title, position } = req.body;
+  const response = await ListController.copyListToBoard(
+    listId,
+    targetBoardId,
+    title,
+    position
+  );
+  return handleServiceResponse(response, res);
+});
 
 export default route;
