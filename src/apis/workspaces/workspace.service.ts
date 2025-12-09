@@ -517,7 +517,7 @@ export class WorkspaceService {
       .where('id = :memberId', { memberId })
       .execute();
 
-    // OPTIMIZATION: Select chỉ fields cần thiết cho updated member
+    // Select chỉ fields cần thiết cho updated member
     const updatedMember = await this.workspaceMemberRepository
       .createQueryBuilder('wm')
       .leftJoinAndSelect('wm.user', 'user')
