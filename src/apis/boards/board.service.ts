@@ -314,4 +314,104 @@ export class BoardService {
     await this.boardRepository.remove(board);
     return { message: 'Board deleted permanently' };
   }
+  async getBoardOwner(boardId: string) {
+    const ownerRole = await this.roleRepository.findOne({
+      where: { name: ROLES.BOARD_OWNER },
+    });
+    if (!ownerRole) throw new Error('Owner role not found');
+
+    const boardMember = await this.boardMemberRepository.findOne({
+      where: { boardId, roleId: ownerRole.id },
+    });
+    if (!boardMember) throw new Error('Board owner not found');
+    return boardMember;
+  }
+
+  async transferOwnership(boardId: string, newOwnerId: string) {
+    const [ownerRole, adminRole, memberRole] = await Promise.all([
+      this.roleRepository.findOne({
+        where: { name: ROLES.BOARD_OWNER },
+      }),
+      this.roleRepository.findOne({
+        where: { name: ROLES.BOARD_ADMIN },
+      }),
+      this.roleRepository.findOne({
+        where: { name: ROLES.BOARD_MEMBER },
+      }),
+    ]);
+
+    if (!ownerRole) throw new Error('Owner role not found');
+
+    const currentOwner = await this.boardMemberRepository.findOne({
+      where: { boardId, roleId: ownerRole.id },
+    });
+    if (!currentOwner) throw new Error('Board owner not found');
+    
+    if (currentOwner.userId === newOwnerId) {
+      return this.boardRepository.findOne({
+        where: { id: boardId },
+        relations: ['boardMembers'],
+      });
+    }
+
+    const demotionRoleId = adminRole?.id ?? memberRole?.id;
+    if (!demotionRoleId) {
+      throw new Error('No role available to demote current owner');
+    }
+
+    const existingNewOwner = await this.boardMemberRepository.findOne({
+      where: { boardId, userId: newOwnerId },
+    });
+
+    if (existingNewOwner) {
+      existingNewOwner.roleId = ownerRole.id;
+      await this.boardMemberRepository.save(existingNewOwner);
+
+      currentOwner.roleId = demotionRoleId;
+      await this.boardMemberRepository.save(currentOwner);
+    } else {
+      const previousOwnerId = currentOwner.userId;
+      currentOwner.userId = newOwnerId;
+      await this.boardMemberRepository.save(currentOwner);
+
+      const demotedMember = this.boardMemberRepository.create({
+        boardId,
+        userId: previousOwnerId,
+        roleId: demotionRoleId,
+      });
+
+      await this.boardMemberRepository.save(demotedMember);
+    }
+
+    return await this.boardRepository.findOne({
+      where: { id: boardId },
+      relations: ['boardMembers'],
+    });
+  }
+
+  async checkBoardAdmin(boardId: string, userId: string) {
+    const boardMember = await this.boardMemberRepository.findOne({
+      where: { boardId, userId },
+      relations: ['role'],
+    });
+
+    if (!boardMember) throw new Error('User is not a member of the board');
+
+    const adminRoles = [ROLES.BOARD_OWNER, ROLES.BOARD_ADMIN];
+
+    return adminRoles.includes(boardMember.role.name as any);
+  }
+
+  async updateBoardSettings(boardId: string, visibility: string, permissions: string[]) {
+    const board = await this.boardRepository.findOne({ where: { id: boardId } });
+    if (!board) throw new Error('Board not found');
+
+    // Cập nhật visibility và permissions
+    board.visibility = visibility;
+    // board.permissions = permissions; 
+
+    return await this.boardRepository.save(board);
+  }
+
+
 }
