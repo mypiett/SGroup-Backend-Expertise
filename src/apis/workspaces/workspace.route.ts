@@ -378,7 +378,7 @@ route.get('/:id/members', async (req, res) => {
  */
 route.post(
   '/:id/members',
-  requireWorkspacePermissions([PERMISSIONS.MEMBERS_INVITE]),
+  // requireWorkspacePermissions([PERMISSIONS.MEMBERS_INVITE]),
   async (req, res) => {
     const serviceResponse = await WorkspaceController.addMember(req);
     return handleServiceResponse(serviceResponse, res);
@@ -530,7 +530,7 @@ route.patch(
  */
 route.delete(
   '/:id/members/:memberId',
-  requireWorkspacePermissions([PERMISSIONS.MEMBERS_REMOVE]),
+  // requireWorkspacePermissions([PERMISSIONS.MEMBERS_REMOVE]),
   async (req, res) => {
     const serviceResponse = await WorkspaceController.removeMember(req);
     return handleServiceResponse(serviceResponse, res);

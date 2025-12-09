@@ -1,6 +1,7 @@
 import {
   Column,
   Entity,
+  Index,
   JoinColumn,
   ManyToOne,
   OneToMany,
@@ -13,6 +14,11 @@ import { List } from './list.entity';
 import { Workspace } from './workspace.entity';
 
 @Entity('boards')
+// ✅ PERFORMANCE INDEXES
+@Index('idx_board_workspace_id', ['workspace'])
+@Index('idx_board_closed', ['isClosed'])
+@Index('idx_board_workspace_closed', ['workspace', 'isClosed'])
+@Index('idx_board_visibility', ['visibility'])
 export class Board extends DateTimeEntity {
   // id
   @PrimaryGeneratedColumn('uuid')

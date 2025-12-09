@@ -49,4 +49,17 @@ export const AppDataSource = new DataSource({
         rejectUnauthorized: false,
       }
     : false,
+  extra: {
+    max: 20,
+    min: 5,
+    idleTimeoutMillis: 30000,
+    connectionTimeoutMillis: 6000,
+  },
+  cache: {
+    type: 'database',
+    duration: 30000,
+    tableName: 'query_result_cache',
+  },
+  maxQueryExecutionTime: 1000,
+  poolSize: 10,
 });

@@ -11,7 +11,8 @@
     "lint": "eslint . --config eslint.config.ts --ext .ts",
     "prepare": "husky install",
     "seed:auth": "ts-node -r tsconfig-paths/register ./src/scripts/run-seeder.ts",
-    "seed:rbac": "ts-node -r tsconfig-paths/register ./src/scripts/seed-rbac.ts"
+    "seed:rbac": "ts-node -r tsconfig-paths/register ./src/scripts/seed-rbac.ts",
+    "seed:listcard": "ts-node -r tsconfig-paths/register ./src/scripts/seed-listcard.ts"
   },
   "keywords": [],
   "author": "",
