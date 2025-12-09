@@ -15,4 +15,5 @@ route.use('/workspaces', authenticateJWT, WorkspaceRouter);
 route.use('/boards', authenticateJWT, BoardRouter);
 route.use('/roles', authenticateJWT, RoleRouter);
 route.use('/lists', authenticateJWT, ListRouter);
+route.use('/', authenticateJWT, ListRouter);
 export default route;

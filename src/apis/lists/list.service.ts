@@ -1,7 +1,54 @@
+import { AppDataSource } from '@/config/data-source';
 import { ListRepository } from './list.repository';
+import { Board } from '@/common/entities/board.entity';
+import { BoardMembers } from '@/common/entities/board-member.entity';
+import { List } from '@/common/entities/list.entity';
 
 export class ListService {
   private listRepository = new ListRepository();
+  private boardRepository = AppDataSource.getRepository(Board);
+  private boardMemberRepository = AppDataSource.getRepository(BoardMembers);
+  async getAllListsByBoard(boardId: string): Promise<List[]> {
+    return await this.listRepository.getAllListsByBoard(boardId);
+  }
+
+  async createList(boardId: string, title: string, currentUserId: string) {
+    const board = await this.boardRepository.findOne({
+      where: { id: boardId },
+      select: ['id', 'isClosed'],
+    });
+    if (!board) throw new Error('Board not found');
+    if (board.isClosed) throw new Error('Board is closed');
+
+    const currentMember = await this.boardMemberRepository
+      .createQueryBuilder('bm')
+      .leftJoin('bm.role', 'role')
+      .where('bm.boardId = :boardId', { boardId })
+      .andWhere('bm.userId = :userId', { userId: currentUserId })
+      .select(['bm.id', 'role.name'])
+      .getOne();
+
+    if (!currentMember) throw new Error('You are not a member');
+
+    if (
+      !['board_owner', 'board_admin', 'board_member'].includes(
+        currentMember.role.name
+      )
+    ) {
+      throw new Error('Only board owner or admin or member can add list');
+    }
+
+    if (title.trim().length > 255) throw new Error('Title max length is 255');
+    const maxPos = await this.listRepository.getMaxPositionInBoard(boardId);
+    const position = maxPos + 1;
+
+    const newList = await this.listRepository.createList({
+      title: title.trim(),
+      boardId,
+      position,
+    });
+    return newList;
+  }
 
   async archiveList(listId: string) {
     // KHÔNG cần load full entity - chỉ update
