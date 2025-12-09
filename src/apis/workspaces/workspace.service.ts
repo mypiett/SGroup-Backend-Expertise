@@ -76,23 +76,12 @@ export class WorkspaceService {
   async getAllWorkspaces() {
     return await this.workspaceRepository.find({
       where: { isArchived: false },
-      relations: [
-        'workspaceMembers',
-        'workspaceMembers.user',
-        'workspaceMembers.role',
-      ],
     });
   }
 
   async getWorkspaceById(id: string) {
     const workspace = await this.workspaceRepository.findOne({
       where: { id, isArchived: false },
-      relations: [
-        'boards',
-        'workspaceMembers',
-        'workspaceMembers.user',
-        'workspaceMembers.role',
-      ],
     });
     if (!workspace) throw new Error('Workspace not found');
     return workspace;
@@ -120,90 +109,170 @@ export class WorkspaceService {
   }
 
   async getWorkspacesByUserId(userId: string) {
-    // Lấy tất cả workspace mà user là thành viên
-    const workspaceMembers = await this.workspaceMemberRepository.find({
-      where: { userId },
-      relations: [
-        'workspace',
-        'workspace.workspaceMembers',
-        'workspace.workspaceMembers.user',
-        'workspace.workspaceMembers.role',
-        'workspace.boards',
-        'role',
-      ],
+    // Sử dụng QueryBuilder với LEFT JOIN để tránh N+1 query
+    const workspaces = await this.workspaceMemberRepository
+      .createQueryBuilder('wm')
+      .leftJoinAndSelect('wm.workspace', 'workspace')
+      .leftJoinAndSelect('wm.role', 'myRole')
+      .leftJoin('workspace.workspaceMembers', 'members')
+      .leftJoin('members.user', 'memberUser')
+      .leftJoin('members.role', 'memberRole')
+      .where('wm.userId = :userId', { userId })
+      .andWhere('workspace.isArchived = :isArchived', { isArchived: false })
+      // select chỉ fields cần thiết
+      .select([
+        'wm.id',
+        'workspace.id',
+        'workspace.title',
+        'workspace.description',
+        'workspace.visibility',
+        'workspace.isArchived',
+        'workspace.createdAt',
+        'workspace.updatedAt',
+        'myRole.id',
+        'myRole.name',
+        'members.id',
+        'members.createdAt',
+        'memberUser.id',
+        'memberUser.name',
+        'memberUser.email',
+        'memberUser.avatarUrl',
+        'memberRole.id',
+        'memberRole.name',
+      ])
+      .getMany();
+
+    // Fetch boards riêng với query tối ưu
+    const workspaceIds = workspaces.map((wm) => wm.workspace.id);
+    const boards =
+      workspaceIds.length > 0
+        ? await this.workspaceRepository
+            .createQueryBuilder('w')
+            .leftJoinAndSelect('w.boards', 'board')
+            .where('w.id IN (:...workspaceIds)', { workspaceIds })
+            .andWhere('board.isClosed = :isClosed', { isClosed: false })
+            .select([
+              'w.id',
+              'board.id',
+              'board.title',
+              'board.description',
+              'board.coverUrl',
+              'board.visibility',
+              'board.createdAt',
+            ])
+            .getMany()
+        : [];
+
+    // Map boards vào workspaces
+    const boardsMap = new Map<string, any[]>();
+    boards.forEach((w) => {
+      boardsMap.set(w.id, w.boards || []);
     });
 
-    // Lọc và format kết quả
-    return workspaceMembers
-      .filter((wm) => !wm.workspace.isArchived)
-      .map((wm) => ({
-        id: wm.workspace.id,
-        title: wm.workspace.title,
-        description: wm.workspace.description,
-        visibility: wm.workspace.visibility,
-        isArchived: wm.workspace.isArchived,
-        createdAt: wm.workspace.createdAt,
-        updatedAt: wm.workspace.updatedAt,
-
-        myRole: wm.role,
-
-        boards: wm.workspace.boards || [],
-
-        members:
-          wm.workspace.workspaceMembers?.map((member) => ({
-            id: member.id,
-            userId: member.user?.id,
-            username: member.user?.name,
-            email: member.user?.email,
-            avatarUrl: member.user?.avatarUrl,
-            role: member.role,
-            joinedAt: member.createdAt,
-          })) || [],
-      }));
+    // Format kết quả
+    return workspaces.map((wm) => ({
+      id: wm.workspace.id,
+      title: wm.workspace.title,
+      description: wm.workspace.description,
+      visibility: wm.workspace.visibility,
+      isArchived: wm.workspace.isArchived,
+      createdAt: wm.workspace.createdAt,
+      updatedAt: wm.workspace.updatedAt,
+      myRole: wm.role,
+      boards: boardsMap.get(wm.workspace.id) || [],
+      members:
+        wm.workspace.workspaceMembers?.map((member) => ({
+          id: member.id,
+          userId: member.user?.id,
+          username: member.user?.name,
+          email: member.user?.email,
+          avatarUrl: member.user?.avatarUrl,
+          role: member.role,
+          joinedAt: member.createdAt,
+        })) || [],
+    }));
   }
 
   // Get archived workspaces by user ID
   async getArchivedWorkspacesByUserId(userId: string) {
-    // Lấy tất cả workspace đã archived mà user là thành viên
-    const workspaceMembers = await this.workspaceMemberRepository.find({
-      where: { userId },
-      relations: [
-        'workspace',
-        'workspace.workspaceMembers',
-        'workspace.workspaceMembers.user',
-        'workspace.workspaceMembers.role',
-        'workspace.boards',
-        'role',
-      ],
+    const workspaces = await this.workspaceMemberRepository
+      .createQueryBuilder('wm')
+      .leftJoinAndSelect('wm.workspace', 'workspace')
+      .leftJoinAndSelect('wm.role', 'myRole')
+      .leftJoin('workspace.workspaceMembers', 'members')
+      .leftJoin('members.user', 'memberUser')
+      .leftJoin('members.role', 'memberRole')
+      .where('wm.userId = :userId', { userId })
+      .andWhere('workspace.isArchived = :isArchived', { isArchived: true })
+      .select([
+        'wm.id',
+        'workspace.id',
+        'workspace.title',
+        'workspace.description',
+        'workspace.visibility',
+        'workspace.isArchived',
+        'workspace.createdAt',
+        'workspace.updatedAt',
+        'myRole.id',
+        'myRole.name',
+        'members.id',
+        'members.createdAt',
+        'memberUser.id',
+        'memberUser.name',
+        'memberUser.email',
+        'memberUser.avatarUrl',
+        'memberRole.id',
+        'memberRole.name',
+      ])
+      .getMany();
+
+    // Fetch boards riêng (bao gồm cả closed boards cho archived workspace)
+    const workspaceIds = workspaces.map((wm) => wm.workspace.id);
+    const boards =
+      workspaceIds.length > 0
+        ? await this.workspaceRepository
+            .createQueryBuilder('w')
+            .leftJoinAndSelect('w.boards', 'board')
+            .where('w.id IN (:...workspaceIds)', { workspaceIds })
+            .select([
+              'w.id',
+              'board.id',
+              'board.title',
+              'board.description',
+              'board.coverUrl',
+              'board.visibility',
+              'board.isClosed',
+              'board.createdAt',
+            ])
+            .getMany()
+        : [];
+
+    const boardsMap = new Map<string, any[]>();
+    boards.forEach((w) => {
+      boardsMap.set(w.id, w.boards || []);
     });
 
-    // Lọc và format kết quả - chỉ lấy những workspace đã archived
-    return workspaceMembers
-      .filter((wm) => wm.workspace.isArchived)
-      .map((wm) => ({
-        id: wm.workspace.id,
-        title: wm.workspace.title,
-        description: wm.workspace.description,
-        visibility: wm.workspace.visibility,
-        isArchived: wm.workspace.isArchived,
-        createdAt: wm.workspace.createdAt,
-        updatedAt: wm.workspace.updatedAt,
-
-        myRole: wm.role,
-
-        boards: wm.workspace.boards || [],
-
-        members:
-          wm.workspace.workspaceMembers?.map((member) => ({
-            id: member.id,
-            userId: member.user?.id,
-            username: member.user?.name,
-            email: member.user?.email,
-            avatarUrl: member.user?.avatarUrl,
-            role: member.role,
-            joinedAt: member.createdAt,
-          })) || [],
-      }));
+    return workspaces.map((wm) => ({
+      id: wm.workspace.id,
+      title: wm.workspace.title,
+      description: wm.workspace.description,
+      visibility: wm.workspace.visibility,
+      isArchived: wm.workspace.isArchived,
+      createdAt: wm.workspace.createdAt,
+      updatedAt: wm.workspace.updatedAt,
+      myRole: wm.role,
+      boards: boardsMap.get(wm.workspace.id) || [],
+      members:
+        wm.workspace.workspaceMembers?.map((member) => ({
+          id: member.id,
+          userId: member.user?.id,
+          username: member.user?.name,
+          email: member.user?.email,
+          avatarUrl: member.user?.avatarUrl,
+          role: member.role,
+          joinedAt: member.createdAt,
+        })) || [],
+    }));
   }
 
   // Archive workspace
@@ -341,11 +410,26 @@ export class WorkspaceService {
 
     await this.workspaceMemberRepository.save(newMember);
 
-    // Return member with relations
-    const savedMember = await this.workspaceMemberRepository.findOne({
-      where: { id: newMember.id },
-      relations: ['user', 'role', 'workspace'],
-    });
+    // ✅ OPTIMIZATION: Select chỉ fields cần thiết, loại bỏ password
+    const savedMember = await this.workspaceMemberRepository
+      .createQueryBuilder('wm')
+      .leftJoinAndSelect('wm.user', 'user')
+      .leftJoinAndSelect('wm.role', 'role')
+      .leftJoinAndSelect('wm.workspace', 'workspace')
+      .where('wm.id = :id', { id: newMember.id })
+      .select([
+        'wm.id',
+        'wm.createdAt',
+        'user.id',
+        'user.name',
+        'user.email',
+        'user.avatarUrl',
+        'role.id',
+        'role.name',
+        'workspace.id',
+        'workspace.title',
+      ])
+      .getOne();
 
     return {
       message: 'Member added successfully',
@@ -433,11 +517,28 @@ export class WorkspaceService {
       .where('id = :memberId', { memberId })
       .execute();
 
-    // Fetch fresh from database to get updated relations
-    const updatedMember = await this.workspaceMemberRepository.findOne({
-      where: { id: memberId },
-      relations: ['user', 'role', 'workspace'],
-    });
+    // ✅ OPTIMIZATION: Select chỉ fields cần thiết cho updated member
+    const updatedMember = await this.workspaceMemberRepository
+      .createQueryBuilder('wm')
+      .leftJoinAndSelect('wm.user', 'user')
+      .leftJoinAndSelect('wm.role', 'role')
+      .leftJoinAndSelect('wm.workspace', 'workspace')
+      .where('wm.id = :memberId', { memberId })
+      .select([
+        'wm.id',
+        'wm.roleId',
+        'wm.createdAt',
+        'wm.updatedAt',
+        'user.id',
+        'user.name',
+        'user.email',
+        'user.avatarUrl',
+        'role.id',
+        'role.name',
+        'workspace.id',
+        'workspace.title',
+      ])
+      .getOne();
 
     console.log('Updated member from database:', {
       id: updatedMember?.id,
