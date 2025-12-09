@@ -26,8 +26,8 @@ export class EmailController {
       });
     }
     try {
-      await emailService.sendVerificationEmail(email);
-      await redisClient.set(`lastSent:${email}`, Date.now().toString(), {
+      emailService.sendVerificationEmail(email);
+      redisClient.set(`lastSent:${email}`, Date.now().toString(), {
         EX: 60,
       });
       return res.status(200).json({ message: 'Verification email sent' });
