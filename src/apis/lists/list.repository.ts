@@ -8,6 +8,14 @@ export class ListRepository {
   private cardRepository = AppDataSource.getRepository(Card);
   private boardRepository = AppDataSource.getRepository(Board);
 
+  async getAllListsByBoard(boardId: string): Promise<List[]> {
+    return await this.listRepository
+      .createQueryBuilder('list')
+      .select(['list.id', 'list.title', 'list.position'])
+      .where('list.boardId = :boardId', { boardId })
+      .getMany();
+  }
+
   async findListById(
     listId: string,
     includeCards = false
@@ -119,9 +127,24 @@ export class ListRepository {
       .execute();
   }
 
-  async createList(data: Partial<List>): Promise<List> {
-    const newList = this.listRepository.create(data);
-    return await this.listRepository.save(newList);
+  async createList(data: {
+    title: string;
+    position: number;
+    boardId: string;
+  }): Promise<List> {
+    const result = await this.listRepository
+      .createQueryBuilder()
+      .insert()
+      .into(List)
+      .values({
+        title: data.title,
+        position: data.position,
+        board: { id: data.boardId } as any,
+      })
+      .returning(['id', 'title', 'position', 'boardId'])
+      .execute();
+
+    return result.raw[0] as List;
   }
 
   async createCard(data: Partial<Card>): Promise<Card> {
