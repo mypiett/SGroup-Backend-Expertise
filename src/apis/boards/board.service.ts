@@ -90,7 +90,9 @@ export class BoardService {
         description: true,
         coverUrl: true,
         visibility: true,
-        isClosed: true,
+        isClosed: true,   
+        commentPolicy: true,
+        memberManagePolicy: true,
         createdAt: true,
         updatedAt: true,
         workspace: {
@@ -140,13 +142,23 @@ export class BoardService {
 
     if (!board) throw new Error('Board not found');
     if (!currentMember) throw new Error('You are not a member of this board');
-    if (
-      currentMember.role.name !== ROLES.BOARD_OWNER &&
-      currentMember.role.name !== ROLES.BOARD_ADMIN &&
-      currentMember.role.name !== ROLES.BOARD_MEMBER
-    ) {
-      throw new Error('Only board owner or admin or member can add members');
+
+    const roleName = currentMember.role.name as string;
+    const isOwner = roleName === ROLES.BOARD_OWNER;
+    const isAdmin = roleName === ROLES.BOARD_ADMIN;
+    const isMember = roleName === ROLES.BOARD_MEMBER;
+
+    if (board.memberManagePolicy === 'admins_only') {
+      if (!isOwner && !isAdmin) {
+        throw new Error('Only board owner or admin can add members');
+      }
+    } else {
+      // all_members
+      if (!isOwner && !isAdmin && !isMember) {
+        throw new Error('Only board members or admins can add members');
+      }
     }
+
     if (existingMember)
       throw new Error('User is already a member of this board');
     if (!role) throw new Error('Role not found');
@@ -309,12 +321,10 @@ export class BoardService {
     ]);
 
     if (!ownerRole) throw new Error('Owner role not found');
-
     const currentOwner = await this.boardMemberRepository.findOne({
       where: { boardId, roleId: ownerRole.id },
     });
-    if (!currentOwner) throw new Error('Board owner not found');
-    
+    if (!currentOwner) throw new Error('Board owner not found');    
     if (currentOwner.userId === newOwnerId) {
       return this.boardRepository.findOne({
         where: { id: boardId },
@@ -326,11 +336,9 @@ export class BoardService {
     if (!demotionRoleId) {
       throw new Error('No role available to demote current owner');
     }
-
     const existingNewOwner = await this.boardMemberRepository.findOne({
       where: { boardId, userId: newOwnerId },
     });
-
     if (existingNewOwner) {
       existingNewOwner.roleId = ownerRole.id;
       await this.boardMemberRepository.save(existingNewOwner);
@@ -347,10 +355,8 @@ export class BoardService {
         userId: previousOwnerId,
         roleId: demotionRoleId,
       });
-
       await this.boardMemberRepository.save(demotedMember);
     }
-
     return await this.boardRepository.findOne({
       where: { id: boardId },
       relations: ['boardMembers'],
@@ -363,31 +369,57 @@ export class BoardService {
       relations: ['role'],
     });
 
-    if (!boardMember) throw new Error('User is not a member of the board');
+    if (!boardMember) return false;
 
+    // coi như admin nếu là OWNER hoặc ADMIN
     const adminRoles = [ROLES.BOARD_OWNER, ROLES.BOARD_ADMIN];
-
     return adminRoles.includes(boardMember.role.name as any);
   }
 
-  async updateBoardSettings(boardId: string, visibility: string, permissions: string[]) {
+
+
+  async updateBoardSettings(
+    boardId: string,
+    settings: {
+      visibility?: 'private' | 'workspace' | 'public';
+      backgroundUrl?: string;
+      memberManagePolicy?: 'admins_only' | 'all_members';
+      commentPolicy?: 'disabled' | 'members' | 'workspace' | 'anyone';
+      workspaceMembersCanEditAndJoin?: boolean;
+    }
+  ) {
     const board = await this.boardRepository.findOne({ where: { id: boardId } });
     if (!board) throw new Error('Board not found');
 
-    // Cập nhật visibility và permissions
-    board.visibility = visibility;
-    // board.permissions = permissions; 
+    if (settings.visibility !== undefined) {
+      board.visibility = settings.visibility;
+    }
+
+    if (settings.backgroundUrl !== undefined) {
+      board.coverUrl = settings.backgroundUrl;
+    }
+
+    if (settings.memberManagePolicy !== undefined) {
+      board.memberManagePolicy = settings.memberManagePolicy;
+    }
+
+    if (settings.commentPolicy !== undefined) {
+      board.commentPolicy = settings.commentPolicy;
+    }
+
+    if (settings.workspaceMembersCanEditAndJoin !== undefined) {
+      board.workspaceMembersCanEditAndJoin = settings.workspaceMembersCanEditAndJoin;
+    }
 
     return await this.boardRepository.save(board);
   }
+
 
   async closeBoard(id: string) {
     const board = await this.boardRepository.findOne({
       where: { id },
     });
-
     if (!board) throw new Error('Board not found');
-
     board.isClosed = true;
     return await this.boardRepository.save(board);
   }
@@ -396,9 +428,7 @@ export class BoardService {
     const board = await this.boardRepository.findOne({
       where: { id },
     });
-
     if (!board) throw new Error('Board not found');
-
     board.isClosed = false;
     return await this.boardRepository.save(board);
   }
@@ -407,10 +437,93 @@ export class BoardService {
     const board = await this.boardRepository.findOne({
       where: { id },
     });
-
     if (!board) throw new Error('Board not found');
-
     await this.boardRepository.remove(board);
     return { message: 'Board deleted permanently' };
   }
+
+  async updateBoardCover(boardId: string, coverUrl: string) {
+    const board = await this.boardRepository.findOne({ where: { id: boardId } });
+    if (!board) throw new Error('Board not found');
+    board.coverUrl = coverUrl;
+    return await this.boardRepository.save(board);
+  }
+
+  async getBoardMembers(boardId: string) {
+    const board = await this.boardRepository.findOne({
+      where: { id: boardId },
+    });
+
+    if (!board) throw new Error('Board not found');
+
+    const boardMembers = await this.boardMemberRepository.find({
+      where: { boardId },
+      relations: ['user', 'role'], // lấy thông tin user và role
+    });
+
+    // Trả về thông tin id, name, email, roleName của từng user trong board
+    return boardMembers.map((member) => ({
+      id: member.user.id,
+      name: member.user.name,
+      email: member.user.email,
+      roleName: member.role.name, // Role của user trong board
+    }));
+  }
+
+  async removeMemberFromBoard(
+    boardId: string,
+    targetUserId: string,
+    currentUserId: string
+  ) {
+    const [board, currentMember, targetMember] = await Promise.all([
+      this.boardRepository.findOne({ where: { id: boardId } }),
+      this.boardMemberRepository.findOne({
+        where: { boardId, userId: currentUserId },
+        relations: ['role'],
+      }),
+      this.boardMemberRepository.findOne({
+        where: { boardId, userId: targetUserId },
+        relations: ['role', 'user'],
+      }),
+    ]);
+
+    if (!board) throw new Error('Board not found');
+    if (!currentMember) throw new Error('You are not a member of this board');
+    if (!targetMember) throw new Error('Target user is not a member of this board');
+
+    const isOwner = currentMember.role.name === ROLES.BOARD_OWNER;
+    const isAdmin = currentMember.role.name === ROLES.BOARD_ADMIN;
+    const isMember = currentMember.role.name === ROLES.BOARD_MEMBER;
+
+    const policy = (board as any).memberManagePolicy || 'all_members';
+
+    if (policy === 'admins_only') {
+      if (!isOwner && !isAdmin) {
+        throw new Error('Only board owner or admin can remove members');
+      }
+    } else {
+      if (!isOwner && !isAdmin && !isMember) {
+        throw new Error('Only board members can remove members');
+      }
+    }
+
+    // Không cho đứa không phải owner xoá owner
+    const targetIsOwner = targetMember.role.name === ROLES.BOARD_OWNER;
+    if (targetIsOwner && !isOwner) {
+      throw new Error('Only board owner can remove another owner');
+    }
+
+    await this.boardMemberRepository.remove(targetMember);
+
+    return {
+      message: 'Member removed from board successfully',
+      member: {
+        id: targetMember.user.id,
+        name: targetMember.user.name,
+        email: targetMember.user.email,
+        roleName: targetMember.role.name,
+      },
+    };
+  }
+
 }
