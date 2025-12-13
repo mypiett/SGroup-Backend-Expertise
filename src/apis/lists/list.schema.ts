@@ -1,5 +1,14 @@
 import { z } from 'zod';
 
+export const CreateListSchema = z.object({
+  params: z.object({
+    boardId: z.string().uuid(),
+  }),
+  body: z.object({
+    title: z.string().min(1, 'Title is required').max(255),
+  }),
+});
+
 // --- List Id Schema ---
 export const ListIdSchema = z.object({
   params: z.object({

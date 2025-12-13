@@ -3,11 +3,71 @@ import {
   ResponseStatus,
   ServiceResponse,
 } from '@/common/models/serviceResponse';
+import { Request, Response } from 'express';
 import { ListService } from './list.service';
 
 const listService = new ListService();
 
 export class ListController {
+  static async getAllListsByBoard(req: Request) {
+    const { boardId } = req.params;
+    try {
+      const lists = await listService.getAllListsByBoard(boardId);
+      return new ServiceResponse(
+        ResponseStatus.Success,
+        'Get all lists successfully',
+        lists,
+        StatusCodes.OK
+      );
+    } catch (error: any) {
+      return new ServiceResponse(
+        ResponseStatus.Failed,
+        error.message,
+        null,
+        StatusCodes.BAD_REQUEST
+      );
+    }
+  }
+
+  static async createList(req: Request): Promise<ServiceResponse<any>> {
+    try {
+      const boardId = req.params.boardId;
+      const currentUserId = req.user?.userId;
+      const { title } = req.body;
+      if (!currentUserId) {
+        return new ServiceResponse(
+          ResponseStatus.Failed,
+          'Unauthorized',
+          null,
+          StatusCodes.UNAUTHORIZED
+        );
+      }
+
+      if (!title || !boardId) {
+        return new ServiceResponse(
+          ResponseStatus.Failed,
+          'Title and BoardId are required',
+          null,
+          StatusCodes.BAD_REQUEST
+        );
+      }
+      const list = await listService.createList(boardId, title, currentUserId);
+      return new ServiceResponse(
+        ResponseStatus.Success,
+        'List created successfully',
+        list,
+        StatusCodes.CREATED
+      );
+    } catch (error: any) {
+      return new ServiceResponse(
+        ResponseStatus.Failed,
+        error.message,
+        null,
+        StatusCodes.BAD_REQUEST
+      );
+    }
+  }
+
   static async archiveList(listId: string): Promise<ServiceResponse<any>> {
     try {
       const result = await listService.archiveList(listId);
