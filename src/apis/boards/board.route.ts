@@ -685,7 +685,7 @@ route.patch('/:id/transfer-ownership', authenticateJWT, async (req, res) => {
  *     tags:
  *       - Boards
  *     summary: Update board settings
- *     description: Update visibility and permissions of the board
+ *     description: Update visibility, background, and permission policies of the board
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -695,38 +695,174 @@ route.patch('/:id/transfer-ownership', authenticateJWT, async (req, res) => {
  *         description: Board ID
  *         schema:
  *           type: string
- *       - in: body
- *         name: settings
- *         description: Board settings
- *         required: true
- *         schema:
- *           type: object
- *           properties:
- *             visibility:
- *               type: string
- *               enum: [private, workspace, public]
- *               example: private
- *             permissions:
- *               type: array
- *               items:
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               visibility:
  *                 type: string
- *               example: ["read", "write", "admin"]
+ *                 enum: [private, workspace, public]
+ *                 example: workspace
+ *               backgroundUrl:
+ *                 type: string
+ *                 example: "https://images.example.com/bg-1.png"
+ *               workspaceMembersCanEditAndJoin:
+ *                 type: boolean
+ *                 example: true
+ *               memberManagePolicy:
+ *                 type: string
+ *                 enum: [admins_only, all_members]
+ *                 example: admins_only
+ *               commentPolicy:
+ *                 type: string
+ *                 enum: [disabled, members, workspace, anyone]
+ *                 example: members
  *     responses:
  *       200:
  *         description: Board settings updated successfully
  *       403:
- *         description: Forbidden (user is not board admin)
+ *         description: User is not a board admin or missing boards:update permission
  *       400:
- *         description: Invalid visibility or permissions
+ *         description: Invalid settings payload
  *       500:
  *         description: Server Error
  */
 route.patch(
   '/:id/settings',
   authenticateJWT,
-  requireBoardPermissions(PERMISSIONS.BOARDS_UPDATE), 
+  requireBoardPermissions(PERMISSIONS.BOARDS_UPDATE),
   async (req, res) => {
     const serviceResponse = await BoardController.updateSettings(req);
+    return handleServiceResponse(serviceResponse, res);
+  }
+);
+
+/**
+ * @swagger
+ * /boards/{id}/settings/cover:
+ *   patch:
+ *     tags:
+ *       - Boards
+ *     summary: Update board cover image
+ *     description: Change the cover image for the board
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         description: Board ID
+ *         schema:
+ *           type: string
+ *         example: "a3b9e74d-1234-5678-9abc-def012345678"
+ *       - in: body
+ *         name: coverUrl
+ *         required: true
+ *         description: New cover URL for the board
+ *         schema:
+ *           type: object
+ *           properties:
+ *             coverUrl:
+ *               type: string
+ *               example: "https://example.com/new-cover.jpg"
+ *     responses:
+ *       200:
+ *         description: Board cover updated successfully
+ *       400:
+ *         description: Invalid input
+ *       401:
+ *         description: Unauthorized
+ *       404:
+ *         description: Board not found
+ *       500:
+ *         description: Internal server error
+ */
+route.patch(
+  '/:id/settings/cover',
+  authenticateJWT,
+  requireBoardPermissions(PERMISSIONS.BOARDS_UPDATE), // Kiểm tra quyền admin board
+  async (req, res) => {
+    const serviceResponse = await BoardController.updateCover(req);
+    return handleServiceResponse(serviceResponse, res);
+  }
+);
+
+/**
+ * @swagger
+ * /boards/{id}/members:
+ *   get:
+ *     tags:
+ *       - Boards
+ *     summary: Get board members
+ *     description: Retrieve all members of the board (id, name, email, roleName)
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         description: Board ID
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Board members retrieved successfully
+ *       404:
+ *         description: Board not found
+ *       500:
+ *         description: Internal server error
+ */
+route.get(
+  '/:id/members',
+  authenticateJWT,
+  async (req, res) => {
+    const serviceResponse = await BoardController.getMembers(req);
+    return handleServiceResponse(serviceResponse, res);
+  }
+);
+
+/**
+ * @swagger
+ * /boards/{id}/members/{userId}:
+ *   delete:
+ *     tags:
+ *       - Boards
+ *     summary: Remove a member from a board
+ *     description: Only allowed users (tuỳ memberManagePolicy) được xoá thành viên
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         description: Board ID
+ *         schema:
+ *           type: string
+ *       - in: path
+ *         name: userId
+ *         required: true
+ *         description: User ID to remove from board
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Member removed successfully
+ *       400:
+ *         description: Invalid input
+ *       403:
+ *         description: Forbidden (no permission to remove)
+ *       404:
+ *         description: Board or member not found
+ */
+route.delete(
+  '/:id/members/:userId',
+  authenticateJWT,
+  requireBoardPermissions(PERMISSIONS.MEMBERS_REMOVE),
+  async (req, res) => {
+    const serviceResponse = await BoardController.removeMemberFromBoard(req);
     return handleServiceResponse(serviceResponse, res);
   }
 );
