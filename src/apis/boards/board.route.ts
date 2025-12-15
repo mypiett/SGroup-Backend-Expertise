@@ -61,11 +61,12 @@ const route = Router();
  */
 route.post(
   '/',
-  requireWorkspaceRoles([
-    ROLES.WORKSPACE_ADMIN,
-    ROLES.WORKSPACE_MEMBER,
-    ROLES.WORKSPACE_MODERATOR,
-  ]),
+  authenticateJWT,
+  requireWorkspaceRoles(
+    [ROLES.WORKSPACE_ADMIN, ROLES.WORKSPACE_MEMBER, ROLES.WORKSPACE_MODERATOR],
+    'workspaceId',
+    'body'
+  ),
   async (req, res) => {
     const serviceResponse = await BoardController.create(req);
     return handleServiceResponse(serviceResponse, res);
@@ -97,7 +98,7 @@ route.post(
  *       401:
  *         description: Unauthorized
  */
-route.get('/', async (req, res) => {
+route.get('/', authenticateJWT, async (req, res) => {
   const serviceResponse = await BoardController.findAll(req);
   return handleServiceResponse(serviceResponse, res);
 });
@@ -127,7 +128,7 @@ route.get('/', async (req, res) => {
  *       403:
  *         description: Forbidden (access denied based on visibility)
  */
-route.get('/:id', checkBoardAccess(), async (req, res) => {
+route.get('/:id', authenticateJWT, checkBoardAccess('id'), async (req, res) => {
   const serviceResponse = await BoardController.findOne(req);
   return handleServiceResponse(serviceResponse, res);
 });
@@ -179,7 +180,8 @@ route.get('/:id', checkBoardAccess(), async (req, res) => {
  */
 route.put(
   '/:id',
-  checkBoardAccess(),
+  authenticateJWT,
+  checkBoardAccess('id'),
   requireBoardPermissions(PERMISSIONS.BOARDS_UPDATE),
   async (req, res) => {
     const serviceResponse = await BoardController.update(req);
@@ -212,10 +214,15 @@ route.put(
  *       403:
  *         description: Forbidden (requires boards:delete permission)
  */
-route.patch('/:id/archive', async (req, res) => {
-  const serviceResponse = await BoardController.closeBoard(req);
-  return handleServiceResponse(serviceResponse, res);
-});
+route.patch(
+  '/:id/archive',
+  authenticateJWT,
+  requireBoardPermissions(PERMISSIONS.BOARDS_DELETE),
+  async (req, res) => {
+    const serviceResponse = await BoardController.closeBoard(req);
+    return handleServiceResponse(serviceResponse, res);
+  }
+);
 
 /**
  * @swagger
@@ -242,10 +249,15 @@ route.patch('/:id/archive', async (req, res) => {
  *       403:
  *         description: Forbidden (requires boards:update permission)
  */
-route.patch('/:id/reopen', async (req, res) => {
-  const serviceResponse = await BoardController.reopenBoard(req);
-  return handleServiceResponse(serviceResponse, res);
-});
+route.patch(
+  '/:id/reopen',
+  authenticateJWT,
+  requireBoardPermissions(PERMISSIONS.BOARDS_UPDATE),
+  async (req, res) => {
+    const serviceResponse = await BoardController.reopenBoard(req);
+    return handleServiceResponse(serviceResponse, res);
+  }
+);
 
 /**
  * @swagger
@@ -272,10 +284,15 @@ route.patch('/:id/reopen', async (req, res) => {
  *       500:
  *         description: Server Error
  */
-route.delete('/:id', async (req, res) => {
-  const serviceResponse = await BoardController.deleteBoardPermanently(req);
-  return handleServiceResponse(serviceResponse, res);
-});
+route.delete(
+  '/:id',
+  authenticateJWT,
+  requireBoardPermissions(PERMISSIONS.BOARDS_DELETE),
+  async (req, res) => {
+    const serviceResponse = await BoardController.deleteBoardPermanently(req);
+    return handleServiceResponse(serviceResponse, res);
+  }
+);
 
 /**
  * @swagger
@@ -356,8 +373,9 @@ route.delete('/:id', async (req, res) => {
  */
 route.post(
   '/:id/invite',
+  authenticateJWT,
   validateHandle(addMemberToBoardSchema),
-  checkBoardAccess(),
+  checkBoardAccess('id'),
   requireBoardPermissions(PERMISSIONS.MEMBERS_INVITE),
   async (req, res) => {
     const serviceResponse = await BoardController.addMemberToBoard(req);
@@ -400,10 +418,15 @@ route.post(
  *       401:
  *         description: Unauthorized (not a board member or insufficient role)
  */
-route.post('/:id/generate-link', async (req, res) => {
-  const serviceResponse = await BoardController.createLinkShareBoard(req);
-  return handleServiceResponse(serviceResponse, res);
-});
+route.post(
+  '/:id/generate-link',
+  authenticateJWT,
+  requireBoardPermissions(PERMISSIONS.MEMBERS_INVITE),
+  async (req, res) => {
+    const serviceResponse = await BoardController.createLinkShareBoard(req);
+    return handleServiceResponse(serviceResponse, res);
+  }
+);
 
 /**
  * @swagger
@@ -437,10 +460,15 @@ route.post('/:id/generate-link', async (req, res) => {
  *       401:
  *         description: Unauthorized (not a board member or insufficient role)
  */
-route.delete('/:id/invite-link', async (req, res) => {
-  const serviceResponse = await BoardController.deleteLinkShareBoard(req);
-  return handleServiceResponse(serviceResponse, res);
-});
+route.delete(
+  '/:id/invite-link',
+  authenticateJWT,
+  requireBoardPermissions(PERMISSIONS.MEMBERS_MANAGE),
+  async (req, res) => {
+    const serviceResponse = await BoardController.deleteLinkShareBoard(req);
+    return handleServiceResponse(serviceResponse, res);
+  }
+);
 
 /**
  * @swagger
@@ -501,7 +529,7 @@ route.delete('/:id/invite-link', async (req, res) => {
  *       401:
  *         description: Unauthorized (user not logged in)
  */
-route.post('/:id/invite/:inviteToken', async (req, res) => {
+route.post('/:id/invite/:inviteToken', authenticateJWT, async (req, res) => {
   const serviceResponse = await BoardController.JoinBoardByLink(req);
   return handleServiceResponse(serviceResponse, res);
 });
