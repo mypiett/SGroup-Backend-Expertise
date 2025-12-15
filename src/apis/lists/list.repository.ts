@@ -40,9 +40,15 @@ export class ListRepository {
     return await query.getOne();
   }
 
-  async updateList(listId: string, data: Partial<List>): Promise<List> {
+  async updateList(
+    listId: string,
+    data: Partial<List>
+  ): Promise<Partial<List> & { id: string }> {
     await this.listRepository.update(listId, data);
-    return await this.findListById(listId);
+    return {
+      id: listId,
+      ...data,
+    };
   }
 
   async findCardsByListId(listId: string): Promise<Card[]> {
@@ -277,7 +283,7 @@ export class ListRepository {
       .createQueryBuilder('list')
       .select('MAX(list.position)', 'maxPosition')
       .where('list.boardId = :boardId', { boardId })
-      .cache(`max_position_board_${boardId}`, 10000)
+      // .cache(`max_position_board_${boardId}`, 10000)
       .getRawOne();
     return result?.maxPosition ?? -1;
   }

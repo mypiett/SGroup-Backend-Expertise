@@ -68,6 +68,28 @@ export class ListController {
     }
   }
 
+  static async editListTitle(
+    listId: string,
+    title: string
+  ): Promise<ServiceResponse<any>> {
+    try {
+      const result = await listService.editListTitle(listId, title);
+      return new ServiceResponse(
+        ResponseStatus.Success,
+        `Edit list's name successfully`,
+        result,
+        StatusCodes.OK
+      );
+    } catch (error) {
+      return new ServiceResponse(
+        ResponseStatus.Failed,
+        error.message,
+        null,
+        StatusCodes.BAD_REQUEST
+      );
+    }
+  }
+
   static async archiveList(listId: string): Promise<ServiceResponse<any>> {
     try {
       const result = await listService.archiveList(listId);
@@ -199,6 +221,33 @@ export class ListController {
         'List copied successfully',
         result,
         StatusCodes.CREATED
+      );
+    } catch (error) {
+      return new ServiceResponse(
+        ResponseStatus.Failed,
+        error.message,
+        null,
+        StatusCodes.BAD_REQUEST
+      );
+    }
+  }
+
+  static async reorderList(
+    currentListId: string,
+    prevListId: string,
+    nextListId: string
+  ): Promise<ServiceResponse<any>> {
+    try {
+      const result = await listService.reorderList(
+        currentListId,
+        prevListId,
+        nextListId
+      );
+      return new ServiceResponse(
+        ResponseStatus.Success,
+        'Reorder list successfully',
+        result,
+        StatusCodes.OK
       );
     } catch (error) {
       return new ServiceResponse(

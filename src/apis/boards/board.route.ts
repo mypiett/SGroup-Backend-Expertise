@@ -3,8 +3,8 @@ import { BoardController } from './board.controller';
 import {
   handleServiceResponse,
   validateHandle,
+  validateRequest,
 } from '@/common/utils/httpHandlers';
-import authenticateJWT from '@/common/middleware/authentication';
 import {
   checkBoardAccess,
   requireBoardPermissions,
@@ -13,6 +13,8 @@ import {
 import { PERMISSIONS } from '@/common/constants/permissions';
 import { addMemberToBoardSchema } from './board.schema';
 import { ROLES } from '@/common/constants';
+import { ListController } from '../lists/list.controller';
+import { CreateListSchema } from '../lists/list.schema';
 const route = Router();
 
 /**
@@ -534,4 +536,98 @@ route.post('/:id/invite/:inviteToken', authenticateJWT, async (req, res) => {
   return handleServiceResponse(serviceResponse, res);
 });
 
+/**
+ * @swagger
+ * /lists/{boardId}/lists:
+ *   get:
+ *     tags:
+ *       - Lists
+ *     summary: Get all lists in a board
+ *     description: Retrieve all lists that belong to a specific board
+ *     parameters:
+ *       - in: path
+ *         name: boardId
+ *         required: true
+ *         description: ID of the board to fetch lists from
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     responses:
+ *       200:
+ *         description: Lists retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ *                 properties:
+ *                   id:
+ *                     type: string
+ *                     format: uuid
+ *                     example: "e4f9a123-4567-8901-2345-67890abcdef"
+ *                   title:
+ *                     type: string
+ *                     example: "My List"
+ *                   position:
+ *                     type: number
+ *                     example: 0
+ *                   isArchived:
+ *                     type: boolean
+ *                     example: false
+ *       400:
+ *         description: Invalid boardId
+ *       404:
+ *         description: Board not found
+ *       500:
+ *         description: Server error
+ */
+route.get('/:boardId/lists', async (req, res) => {
+  const response = await ListController.getAllListsByBoard(req);
+  return handleServiceResponse(response, res);
+});
+
+/**
+ * @swagger
+ * /boards/{boardId}/lists:
+ *   post:
+ *     tags:
+ *       - Lists
+ *     summary: Create a new list in a board
+ *     parameters:
+ *       - in: path
+ *         name: boardId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: ID of the board
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - title
+ *             properties:
+ *               title:
+ *                 type: string
+ *                 example: "New List"
+ *     responses:
+ *       201:
+ *         description: List created successfully
+ *       400:
+ *         description: Invalid input
+ *       404:
+ *         description: Board not found
+ */
+route.post(
+  '/:boardId/lists',
+  validateRequest(CreateListSchema),
+  async (req, res) => {
+    const response = await ListController.createList(req);
+    return handleServiceResponse(response, res);
+  }
+);
 export default route;
