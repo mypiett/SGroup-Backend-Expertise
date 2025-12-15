@@ -9,72 +9,18 @@ import {
   MoveListToBoardSchema,
   MoveAllCardsSchema,
   CopyListSchema,
-  CreateListSchema,
+  EditListName,
+  ReorderList,
 } from './list.schema';
-import authenticateJWT from '@/common/middleware/authentication';
+import { requireBoardMember } from '@/common/middleware/requireBoardMember.middleware';
 import {
-  checkBoardAccess,
+  PERMISSIONS,
   requireBoardPermissions,
 } from '@/common/middleware/authorization';
-import { PERMISSIONS } from '@/common/constants/permissions';
+import authenticateJWT from '@/common/middleware/authentication';
 
 const route = Router();
-
-route.get(
-  '/boards/:boardId/lists',
-  authenticateJWT,
-  checkBoardAccess('boardId'),
-  async (req, res) => {
-    const response = await ListController.getAllListsByBoard(req);
-    return handleServiceResponse(response, res);
-  }
-);
-
-/**
- * @swagger
- * /boards/{boardId}/lists:
- *   post:
- *     tags:
- *       - Lists
- *     summary: Create a new list in a board
- *     parameters:
- *       - in: path
- *         name: boardId
- *         required: true
- *         schema:
- *           type: string
- *           format: uuid
- *         description: ID of the board
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - title
- *             properties:
- *               title:
- *                 type: string
- *                 example: "New List"
- *     responses:
- *       201:
- *         description: List created successfully
- *       400:
- *         description: Invalid input
- *       404:
- *         description: Board not found
- */
-route.post(
-  '/boards/:boardId/lists',
-  authenticateJWT,
-  validateRequest(CreateListSchema),
-  requireBoardPermissions(PERMISSIONS.LISTS_CREATE, 'boardId'),
-  async (req, res) => {
-    const response = await ListController.createList(req);
-    return handleServiceResponse(response, res);
-  }
-);
+route.use('/:id', requireBoardMember());
 
 /**
  *
@@ -363,4 +309,104 @@ route.post(
   }
 );
 
+/**
+ * @swagger
+ * /lists/{id}:
+ *   patch:
+ *     tags:
+ *       - Lists
+ *     summary: Edit list name
+ *     description: Update the title of a specific list
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         description: List ID
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - title
+ *             properties:
+ *               title:
+ *                 type: string
+ *                 example: "New List Title"
+ *     responses:
+ *       200:
+ *         description: List name updated successfully
+ *       400:
+ *         description: Invalid input
+ *       403:
+ *         description: Permission denied
+ *       404:
+ *         description: List not found
+ */
+route.patch('/:id', validateRequest(EditListName), async (req, res) => {
+  const listId = req.params.id;
+  const { title } = req.body;
+  const response = await ListController.editListTitle(listId, title);
+  return handleServiceResponse(response, res);
+});
+
+/**
+ * @swagger
+ * /lists/{id}/reorder:
+ *   patch:
+ *     tags:
+ *       - Lists
+ *     summary: Reorder a list
+ *     description: Change the position of a list by placing it between previous and next lists
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         description: Current List ID
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               prevListId:
+ *                 type: string
+ *                 format: uuid
+ *                 nullable: true
+ *                 example: "11111111-1111-1111-1111-111111111111"
+ *                 description: ID of the previous list (null if moved to first position)
+ *               nextListId:
+ *                 type: string
+ *                 format: uuid
+ *                 nullable: true
+ *                 example: "22222222-2222-2222-2222-222222222222"
+ *                 description: ID of the next list (null if moved to last position)
+ *     responses:
+ *       200:
+ *         description: List reordered successfully
+ *       400:
+ *         description: Invalid input
+ *       403:
+ *         description: Permission denied
+ *       404:
+ *         description: List not found
+ */
+route.patch('/:id/reorder', validateRequest(ReorderList), async (req, res) => {
+  const currentListId = req.params.id;
+  const { prevListId, nextListId } = req.body;
+  const response = await ListController.reorderList(
+    currentListId,
+    prevListId,
+    nextListId
+  );
+  return handleServiceResponse(response, res);
+});
 export default route;

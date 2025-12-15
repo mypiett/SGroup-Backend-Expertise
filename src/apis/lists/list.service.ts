@@ -36,7 +36,9 @@ export class ListService {
     }
 
     if (title.trim().length > 255) throw new Error('Title max length is 255');
-    const maxPos = await this.listRepository.getMaxPositionInBoard(boardId);
+    const maxPos = Number(
+      await this.listRepository.getMaxPositionInBoard(boardId)
+    );
     const position = maxPos + 1;
 
     const newList = await this.listRepository.createList({
@@ -45,6 +47,28 @@ export class ListService {
       position,
     });
     return newList;
+  }
+
+  async editListTitle(listId: string, title: string) {
+    const list = await this.listRepository.findListById(listId, false);
+    if (!list) {
+      throw new Error('List not found');
+    }
+    const trimmedTitle = title.trim();
+    if (!trimmedTitle) {
+      throw new Error('Title can not be empty');
+    }
+    if (list.title === trimmedTitle) {
+      throw new Error('New title is the same as current little');
+    }
+    const result = await this.listRepository.updateList(listId, {
+      title: title,
+    } as any);
+
+    if (!result) {
+      throw new Error('List not found');
+    }
+    return result;
   }
 
   async archiveList(listId: string) {
@@ -192,5 +216,54 @@ export class ListService {
       list: result.list,
       copiedCardsCount: result.copiedCount,
     };
+  }
+
+  async reorderList(
+    currentListId: string,
+    prevListId: string,
+    nextListId: string
+  ) {
+    if (nextListId === currentListId) {
+      throw new Error('NextListId cannot be the same as CurrentListId');
+    }
+    if (prevListId === currentListId) {
+      throw new Error('PrevListId cannot be the same as CurrentListId');
+    }
+    if (prevListId === nextListId) {
+      throw new Error('PrevListId cannot be the same as NextListId');
+    }
+    const [currentList, prevList, nextList] = await Promise.all([
+      this.listRepository.findListById(currentListId, false),
+      this.listRepository.findListById(prevListId, false),
+      this.listRepository.findListById(nextListId, false),
+    ]);
+    if (!currentList) {
+      throw new Error('Current list not found');
+    }
+    if (prevList && prevList.boardId !== currentList.boardId) {
+      throw new Error('Invalid prev list');
+    }
+    if (nextList && nextList.boardId !== currentList.boardId) {
+      throw new Error('Invalid next list');
+    }
+
+    let position: number;
+    if (prevList && nextList) {
+      if (prevList.position < nextList.position) {
+        position = (nextList.position + prevList.position) / 2;
+      } else if (!prevList.position && nextList.position) {
+        position = nextList.position - 1;
+      } else if (prevList.position && !nextList.position) {
+        position = prevList.position + 1;
+      } else position = 0;
+    }
+    const result = await this.listRepository.updateList(currentListId, {
+      position: position,
+    } as any);
+
+    if (!result) {
+      throw new Error('List not found');
+    }
+    return result;
   }
 }

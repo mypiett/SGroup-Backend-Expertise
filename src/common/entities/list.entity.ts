@@ -37,4 +37,7 @@ export class List extends DateTimeEntity {
 
   @OneToMany(() => Card, (card) => card.list)
   cards: Card[];
+
+  @Column({ type: 'uuid' })
+  boardId: string;
 }
