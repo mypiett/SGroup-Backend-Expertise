@@ -11,13 +11,24 @@ import {
   CopyListSchema,
   CreateListSchema,
 } from './list.schema';
+import authenticateJWT from '@/common/middleware/authentication';
+import {
+  checkBoardAccess,
+  requireBoardPermissions,
+} from '@/common/middleware/authorization';
+import { PERMISSIONS } from '@/common/constants/permissions';
 
 const route = Router();
 
-route.get('/boards/:boardId/lists', async (req, res) => {
-  const response = await ListController.getAllListsByBoard(req);
-  return handleServiceResponse(response, res);
-});
+route.get(
+  '/boards/:boardId/lists',
+  authenticateJWT,
+  checkBoardAccess('boardId'),
+  async (req, res) => {
+    const response = await ListController.getAllListsByBoard(req);
+    return handleServiceResponse(response, res);
+  }
+);
 
 /**
  * @swagger
@@ -56,7 +67,9 @@ route.get('/boards/:boardId/lists', async (req, res) => {
  */
 route.post(
   '/boards/:boardId/lists',
+  authenticateJWT,
   validateRequest(CreateListSchema),
+  requireBoardPermissions(PERMISSIONS.LISTS_CREATE, 'boardId'),
   async (req, res) => {
     const response = await ListController.createList(req);
     return handleServiceResponse(response, res);
@@ -88,11 +101,17 @@ route.post(
  *       404:
  *         description: List not found
  */
-route.patch('/:id/archive', validateRequest(ListIdSchema), async (req, res) => {
-  const listId = req.params.id;
-  const response = await ListController.archiveList(listId);
-  return handleServiceResponse(response, res);
-});
+route.patch(
+  '/:id/archive',
+  authenticateJWT,
+  validateRequest(ListIdSchema),
+  requireBoardPermissions(PERMISSIONS.LISTS_ARCHIVE),
+  async (req, res) => {
+    const listId = req.params.id;
+    const response = await ListController.archiveList(listId);
+    return handleServiceResponse(response, res);
+  }
+);
 
 /**
  * @swagger
@@ -118,11 +137,17 @@ route.patch('/:id/archive', validateRequest(ListIdSchema), async (req, res) => {
  *       404:
  *         description: List not found
  */
-route.patch('/:id/reopen', validateRequest(ListIdSchema), async (req, res) => {
-  const listId = req.params.id;
-  const response = await ListController.unarchiveList(listId);
-  return handleServiceResponse(response, res);
-});
+route.patch(
+  '/:id/reopen',
+  authenticateJWT,
+  validateRequest(ListIdSchema),
+  requireBoardPermissions(PERMISSIONS.LISTS_UPDATE),
+  async (req, res) => {
+    const listId = req.params.id;
+    const response = await ListController.unarchiveList(listId);
+    return handleServiceResponse(response, res);
+  }
+);
 
 /**
  * @swagger
@@ -150,7 +175,9 @@ route.patch('/:id/reopen', validateRequest(ListIdSchema), async (req, res) => {
  */
 route.patch(
   '/:id/archive-all-cards',
+  authenticateJWT,
   validateRequest(ListIdSchema),
+  requireBoardPermissions(PERMISSIONS.CARDS_ARCHIVE),
   async (req, res) => {
     const listId = req.params.id;
     const response = await ListController.archiveAllCardsInList(listId);
@@ -197,11 +224,17 @@ route.patch(
  */
 route.patch(
   '/:id/move',
+  authenticateJWT,
   validateRequest(MoveListToBoardSchema),
+  requireBoardPermissions(PERMISSIONS.LISTS_UPDATE),
   async (req, res) => {
     const listId = req.params.id;
-    const { boardId } = req.body;
-    const response = await ListController.moveListToBoard(listId, boardId);
+    const { boardId, position } = req.body;
+    const response = await ListController.moveListToBoard(
+      listId,
+      boardId,
+      position
+    );
     return handleServiceResponse(response, res);
   }
 );
@@ -250,7 +283,9 @@ route.patch(
  */
 route.patch(
   '/:id/move-all-cards',
+  authenticateJWT,
   validateRequest(MoveAllCardsSchema),
+  requireBoardPermissions(PERMISSIONS.CARDS_MOVE),
   async (req, res) => {
     const listId = req.params.id;
     const { targetListId, targetBoardId } = req.body;
@@ -310,16 +345,22 @@ route.patch(
  *       404:
  *         description: Source list or target board not found
  */
-route.post('/:id/copy', validateRequest(CopyListSchema), async (req, res) => {
-  const listId = req.params.id;
-  const { targetBoardId, title, position } = req.body;
-  const response = await ListController.copyListToBoard(
-    listId,
-    targetBoardId,
-    title,
-    position
-  );
-  return handleServiceResponse(response, res);
-});
+route.post(
+  '/:id/copy',
+  authenticateJWT,
+  validateRequest(CopyListSchema),
+  requireBoardPermissions(PERMISSIONS.LISTS_CREATE),
+  async (req, res) => {
+    const listId = req.params.id;
+    const { targetBoardId, title, position } = req.body;
+    const response = await ListController.copyListToBoard(
+      listId,
+      targetBoardId,
+      title,
+      position
+    );
+    return handleServiceResponse(response, res);
+  }
+);
 
 export default route;

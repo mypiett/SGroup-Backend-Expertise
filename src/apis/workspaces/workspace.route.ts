@@ -1,7 +1,12 @@
 import { Router } from 'express';
 import { WorkspaceController } from './workspace.controller';
 import { handleServiceResponse } from '@/common/utils/httpHandlers';
-import { requireWorkspacePermissions } from '@/common/middleware/authorization';
+import authenticateJWT from '@/common/middleware/authentication';
+import {
+  requireWorkspacePermissions,
+  canAccessWorkspace,
+  workspaceMember,
+} from '@/common/middleware/authorization';
 import { PERMISSIONS } from '@/common/constants/permissions';
 
 const route = Router();
@@ -22,7 +27,7 @@ const route = Router();
  *       500:
  *         description: Server Error
  */
-route.get('/all', async (_req, res) => {
+route.get('/all', authenticateJWT, async (_req, res) => {
   const serviceResponse = await WorkspaceController.getAllWorkspaces();
   return handleServiceResponse(serviceResponse, res);
 });
@@ -62,7 +67,7 @@ route.get('/all', async (_req, res) => {
  *       500:
  *         description: Server Error
  */
-route.post('/', async (req, res) => {
+route.post('/', authenticateJWT, async (req, res) => {
   const serviceResponse = await WorkspaceController.createWorkspace(req);
   return handleServiceResponse(serviceResponse, res);
 });
@@ -85,7 +90,7 @@ route.post('/', async (req, res) => {
  *       500:
  *         description: Server Error
  */
-route.get('/', async (req, res) => {
+route.get('/', authenticateJWT, async (req, res) => {
   const serviceResponse = await WorkspaceController.getUserWorkspaces(req);
   return handleServiceResponse(serviceResponse, res);
 });
@@ -108,7 +113,7 @@ route.get('/', async (req, res) => {
  *       500:
  *         description: Server Error
  */
-route.get('/archived', async (req, res) => {
+route.get('/archived', authenticateJWT, async (req, res) => {
   const serviceResponse = await WorkspaceController.getArchivedWorkspaces(req);
   return handleServiceResponse(serviceResponse, res);
 });
@@ -140,10 +145,15 @@ route.get('/archived', async (req, res) => {
  *       500:
  *         description: Server Error
  */
-route.get('/:id', async (req, res) => {
-  const serviceResponse = await WorkspaceController.getWorkspaceById(req);
-  return handleServiceResponse(serviceResponse, res);
-});
+route.get(
+  '/:id',
+  authenticateJWT,
+  canAccessWorkspace('id'),
+  async (req, res) => {
+    const serviceResponse = await WorkspaceController.getWorkspaceById(req);
+    return handleServiceResponse(serviceResponse, res);
+  }
+);
 
 /**
  * @swagger
@@ -187,6 +197,7 @@ route.get('/:id', async (req, res) => {
  */
 route.put(
   '/:id',
+  authenticateJWT,
   requireWorkspacePermissions([PERMISSIONS.WORKSPACES_UPDATE]),
   async (req, res) => {
     const serviceResponse = await WorkspaceController.updateWorkspace(req);
@@ -223,6 +234,7 @@ route.put(
  */
 route.delete(
   '/:id',
+  authenticateJWT,
   requireWorkspacePermissions([PERMISSIONS.WORKSPACES_DELETE]),
   async (req, res) => {
     const serviceResponse = await WorkspaceController.deleteWorkspace(req);
@@ -259,6 +271,7 @@ route.delete(
  */
 route.patch(
   '/:id/archive',
+  authenticateJWT,
   requireWorkspacePermissions([PERMISSIONS.WORKSPACES_DELETE]),
   async (req, res) => {
     const serviceResponse = await WorkspaceController.archiveWorkspace(req);
@@ -295,6 +308,7 @@ route.patch(
  */
 route.patch(
   '/:id/reopen',
+  authenticateJWT,
   requireWorkspacePermissions([PERMISSIONS.WORKSPACES_UPDATE]),
   async (req, res) => {
     const serviceResponse = await WorkspaceController.reopenWorkspace(req);
@@ -329,10 +343,15 @@ route.patch(
  *       500:
  *         description: Server Error
  */
-route.get('/:id/members', async (req, res) => {
-  const serviceResponse = await WorkspaceController.getWorkspaceMembers(req);
-  return handleServiceResponse(serviceResponse, res);
-});
+route.get(
+  '/:id/members',
+  authenticateJWT,
+  workspaceMember,
+  async (req, res) => {
+    const serviceResponse = await WorkspaceController.getWorkspaceMembers(req);
+    return handleServiceResponse(serviceResponse, res);
+  }
+);
 
 /**
  * @swagger
@@ -378,7 +397,8 @@ route.get('/:id/members', async (req, res) => {
  */
 route.post(
   '/:id/members',
-  // requireWorkspacePermissions([PERMISSIONS.MEMBERS_INVITE]),
+  authenticateJWT,
+  requireWorkspacePermissions([PERMISSIONS.MEMBERS_INVITE]),
   async (req, res) => {
     const serviceResponse = await WorkspaceController.addMember(req);
     return handleServiceResponse(serviceResponse, res);
@@ -434,6 +454,7 @@ route.post(
  */
 route.post(
   '/:id/invite',
+  authenticateJWT,
   requireWorkspacePermissions([PERMISSIONS.MEMBERS_INVITE]),
   async (req, res) => {
     const serviceResponse = await WorkspaceController.inviteMemberByEmail(req);
@@ -488,6 +509,7 @@ route.post(
  */
 route.patch(
   '/:id/members/:memberId',
+  authenticateJWT,
   requireWorkspacePermissions([PERMISSIONS.MEMBERS_MANAGE]),
   async (req, res) => {
     const serviceResponse = await WorkspaceController.updateMemberRole(req);
@@ -530,7 +552,8 @@ route.patch(
  */
 route.delete(
   '/:id/members/:memberId',
-  // requireWorkspacePermissions([PERMISSIONS.MEMBERS_REMOVE]),
+  authenticateJWT,
+  requireWorkspacePermissions([PERMISSIONS.MEMBERS_REMOVE]),
   async (req, res) => {
     const serviceResponse = await WorkspaceController.removeMember(req);
     return handleServiceResponse(serviceResponse, res);
@@ -608,7 +631,8 @@ route.delete(
  */
 route.patch(
   '/:id/visibility',
-  requireWorkspacePermissions([PERMISSIONS.WORKSPACES_UPDATE]),
+  authenticateJWT,
+  requireWorkspacePermissions([PERMISSIONS.WORKSPACES_MANAGE]),
   async (req, res) => {
     const serviceResponse = await WorkspaceController.updateVisibility(req);
     return handleServiceResponse(serviceResponse, res);

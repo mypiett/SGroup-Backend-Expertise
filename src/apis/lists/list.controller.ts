@@ -129,10 +129,15 @@ export class ListController {
 
   static async moveListToBoard(
     listId: string,
-    boardId: string
+    boardId: string,
+    position: number
   ): Promise<ServiceResponse<any>> {
     try {
-      const result = await listService.moveListToBoard(listId, boardId);
+      const result = await listService.moveListToBoard(
+        listId,
+        boardId,
+        position
+      );
       return new ServiceResponse(
         ResponseStatus.Success,
         'List moved to board successfully',
