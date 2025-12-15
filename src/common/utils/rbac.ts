@@ -1,417 +1,574 @@
-import { BoardMembers } from '@/common/entities/board-member.entity';
-import { CardMembers } from '@/common/entities/card-members.entity';
-import { WorkspaceMembers } from '@/common/entities/workspace-member.entity';
 import { AppDataSource } from '@/config/data-source';
+import { WorkspaceMembers } from '@/common/entities/workspace-member.entity';
+import { BoardMembers } from '@/common/entities/board-member.entity';
 import { Board } from '@/common/entities/board.entity';
-import { ROLES } from '@/common/constants/roles';
-import { PERMISSION_GROUPS } from '@/common/constants/permissions';
+import { Workspace } from '@/common/entities/workspace.entity';
+import { ROLES, Role } from '@/common/constants/roles';
+import { Permission, PERMISSIONS } from '@/common/constants/permissions';
 
-export class RbacProvider {
-  // Lấy roles của user trong workspace
-  static async getUserRolesInWorkspace(
+export type ResourceType = 'workspace' | 'board' | 'list' | 'card';
+export type BoardVisibility = 'private' | 'workspace' | 'public';
+export type WorkspaceVisibility = 'private' | 'public';
+
+export interface UserContext {
+  userId: string;
+  workspaceRole?: Role;
+  boardRole?: Role;
+  isWorkspaceMember: boolean;
+  isBoardMember: boolean;
+}
+
+export interface AccessResult {
+  allowed: boolean;
+  reason?: string;
+  userContext?: UserContext;
+}
+
+const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
+  // System Admin - Full access
+  [ROLES.ADMIN]: Object.values(PERMISSIONS),
+
+  // Workspace Admin - Quản lý workspace
+  [ROLES.WORKSPACE_ADMIN]: [
+    PERMISSIONS.WORKSPACES_READ,
+    PERMISSIONS.WORKSPACES_UPDATE,
+    PERMISSIONS.WORKSPACES_DELETE,
+    PERMISSIONS.WORKSPACES_MANAGE,
+    PERMISSIONS.BOARDS_CREATE,
+    PERMISSIONS.BOARDS_READ,
+    PERMISSIONS.BOARDS_UPDATE,
+    PERMISSIONS.BOARDS_DELETE,
+    PERMISSIONS.BOARDS_MANAGE,
+    PERMISSIONS.MEMBERS_INVITE,
+    PERMISSIONS.MEMBERS_REMOVE,
+    PERMISSIONS.MEMBERS_READ,
+    PERMISSIONS.MEMBERS_MANAGE,
+    PERMISSIONS.LISTS_CREATE,
+    PERMISSIONS.LISTS_READ,
+    PERMISSIONS.LISTS_UPDATE,
+    PERMISSIONS.LISTS_DELETE,
+    PERMISSIONS.LISTS_ARCHIVE,
+    PERMISSIONS.CARDS_CREATE,
+    PERMISSIONS.CARDS_READ,
+    PERMISSIONS.CARDS_UPDATE,
+    PERMISSIONS.CARDS_DELETE,
+    PERMISSIONS.CARDS_ASSIGN,
+    PERMISSIONS.CARDS_MOVE,
+    PERMISSIONS.CARDS_ARCHIVE,
+    PERMISSIONS.COMMENTS_CREATE,
+    PERMISSIONS.COMMENTS_READ,
+    PERMISSIONS.COMMENTS_UPDATE,
+    PERMISSIONS.COMMENTS_DELETE,
+    PERMISSIONS.COMMENTS_MODERATE,
+    PERMISSIONS.LABELS_CREATE,
+    PERMISSIONS.LABELS_READ,
+    PERMISSIONS.LABELS_UPDATE,
+    PERMISSIONS.LABELS_DELETE,
+    PERMISSIONS.CHECKLISTS_CREATE,
+    PERMISSIONS.CHECKLISTS_READ,
+    PERMISSIONS.CHECKLISTS_UPDATE,
+    PERMISSIONS.CHECKLISTS_DELETE,
+    PERMISSIONS.ATTACHMENTS_CREATE,
+    PERMISSIONS.ATTACHMENTS_READ,
+    PERMISSIONS.ATTACHMENTS_DELETE,
+  ],
+
+  // Workspace Moderator - Moderate content
+  [ROLES.WORKSPACE_MODERATOR]: [
+    PERMISSIONS.WORKSPACES_READ,
+    PERMISSIONS.BOARDS_CREATE,
+    PERMISSIONS.BOARDS_READ,
+    PERMISSIONS.BOARDS_UPDATE,
+    PERMISSIONS.MEMBERS_INVITE,
+    PERMISSIONS.MEMBERS_READ,
+    PERMISSIONS.LISTS_CREATE,
+    PERMISSIONS.LISTS_READ,
+    PERMISSIONS.LISTS_UPDATE,
+    PERMISSIONS.LISTS_DELETE,
+    PERMISSIONS.LISTS_ARCHIVE,
+    PERMISSIONS.CARDS_CREATE,
+    PERMISSIONS.CARDS_READ,
+    PERMISSIONS.CARDS_UPDATE,
+    PERMISSIONS.CARDS_DELETE,
+    PERMISSIONS.CARDS_ASSIGN,
+    PERMISSIONS.CARDS_MOVE,
+    PERMISSIONS.CARDS_ARCHIVE,
+    PERMISSIONS.COMMENTS_CREATE,
+    PERMISSIONS.COMMENTS_READ,
+    PERMISSIONS.COMMENTS_UPDATE,
+    PERMISSIONS.COMMENTS_DELETE,
+    PERMISSIONS.COMMENTS_MODERATE,
+    PERMISSIONS.LABELS_CREATE,
+    PERMISSIONS.LABELS_READ,
+    PERMISSIONS.LABELS_UPDATE,
+    PERMISSIONS.LABELS_DELETE,
+    PERMISSIONS.CHECKLISTS_CREATE,
+    PERMISSIONS.CHECKLISTS_READ,
+    PERMISSIONS.CHECKLISTS_UPDATE,
+    PERMISSIONS.CHECKLISTS_DELETE,
+    PERMISSIONS.ATTACHMENTS_CREATE,
+    PERMISSIONS.ATTACHMENTS_READ,
+    PERMISSIONS.ATTACHMENTS_DELETE,
+  ],
+
+  // Workspace Member - Standard member
+  [ROLES.WORKSPACE_MEMBER]: [
+    PERMISSIONS.WORKSPACES_READ,
+    PERMISSIONS.BOARDS_CREATE,
+    PERMISSIONS.BOARDS_READ,
+    PERMISSIONS.MEMBERS_READ,
+    PERMISSIONS.LISTS_CREATE,
+    PERMISSIONS.LISTS_READ,
+    PERMISSIONS.LISTS_UPDATE,
+    PERMISSIONS.CARDS_CREATE,
+    PERMISSIONS.CARDS_READ,
+    PERMISSIONS.CARDS_UPDATE,
+    PERMISSIONS.CARDS_ASSIGN,
+    PERMISSIONS.CARDS_MOVE,
+    PERMISSIONS.COMMENTS_CREATE,
+    PERMISSIONS.COMMENTS_READ,
+    PERMISSIONS.COMMENTS_UPDATE,
+    PERMISSIONS.LABELS_READ,
+    PERMISSIONS.CHECKLISTS_CREATE,
+    PERMISSIONS.CHECKLISTS_READ,
+    PERMISSIONS.CHECKLISTS_UPDATE,
+    PERMISSIONS.ATTACHMENTS_CREATE,
+    PERMISSIONS.ATTACHMENTS_READ,
+  ],
+
+  // Workspace Observer - View only
+  [ROLES.WORKSPACE_OBSERVER]: [
+    PERMISSIONS.WORKSPACES_READ,
+    PERMISSIONS.BOARDS_READ,
+    PERMISSIONS.MEMBERS_READ,
+    PERMISSIONS.LISTS_READ,
+    PERMISSIONS.CARDS_READ,
+    PERMISSIONS.COMMENTS_READ,
+    PERMISSIONS.LABELS_READ,
+    PERMISSIONS.CHECKLISTS_READ,
+    PERMISSIONS.ATTACHMENTS_READ,
+  ],
+
+  // Board Owner - Full board control
+  [ROLES.BOARD_OWNER]: [
+    PERMISSIONS.BOARDS_READ,
+    PERMISSIONS.BOARDS_UPDATE,
+    PERMISSIONS.BOARDS_DELETE,
+    PERMISSIONS.BOARDS_MANAGE,
+    PERMISSIONS.MEMBERS_INVITE,
+    PERMISSIONS.MEMBERS_REMOVE,
+    PERMISSIONS.MEMBERS_READ,
+    PERMISSIONS.MEMBERS_MANAGE,
+    PERMISSIONS.LISTS_CREATE,
+    PERMISSIONS.LISTS_READ,
+    PERMISSIONS.LISTS_UPDATE,
+    PERMISSIONS.LISTS_DELETE,
+    PERMISSIONS.LISTS_ARCHIVE,
+    PERMISSIONS.CARDS_CREATE,
+    PERMISSIONS.CARDS_READ,
+    PERMISSIONS.CARDS_UPDATE,
+    PERMISSIONS.CARDS_DELETE,
+    PERMISSIONS.CARDS_ASSIGN,
+    PERMISSIONS.CARDS_MOVE,
+    PERMISSIONS.CARDS_ARCHIVE,
+    PERMISSIONS.COMMENTS_CREATE,
+    PERMISSIONS.COMMENTS_READ,
+    PERMISSIONS.COMMENTS_UPDATE,
+    PERMISSIONS.COMMENTS_DELETE,
+    PERMISSIONS.COMMENTS_MODERATE,
+    PERMISSIONS.LABELS_CREATE,
+    PERMISSIONS.LABELS_READ,
+    PERMISSIONS.LABELS_UPDATE,
+    PERMISSIONS.LABELS_DELETE,
+    PERMISSIONS.CHECKLISTS_CREATE,
+    PERMISSIONS.CHECKLISTS_READ,
+    PERMISSIONS.CHECKLISTS_UPDATE,
+    PERMISSIONS.CHECKLISTS_DELETE,
+    PERMISSIONS.ATTACHMENTS_CREATE,
+    PERMISSIONS.ATTACHMENTS_READ,
+    PERMISSIONS.ATTACHMENTS_DELETE,
+  ],
+
+  // Board Admin - Manage board
+  [ROLES.BOARD_ADMIN]: [
+    PERMISSIONS.BOARDS_READ,
+    PERMISSIONS.BOARDS_UPDATE,
+    PERMISSIONS.MEMBERS_INVITE,
+    PERMISSIONS.MEMBERS_REMOVE,
+    PERMISSIONS.MEMBERS_READ,
+    PERMISSIONS.LISTS_CREATE,
+    PERMISSIONS.LISTS_READ,
+    PERMISSIONS.LISTS_UPDATE,
+    PERMISSIONS.LISTS_DELETE,
+    PERMISSIONS.LISTS_ARCHIVE,
+    PERMISSIONS.CARDS_CREATE,
+    PERMISSIONS.CARDS_READ,
+    PERMISSIONS.CARDS_UPDATE,
+    PERMISSIONS.CARDS_DELETE,
+    PERMISSIONS.CARDS_ASSIGN,
+    PERMISSIONS.CARDS_MOVE,
+    PERMISSIONS.CARDS_ARCHIVE,
+    PERMISSIONS.COMMENTS_CREATE,
+    PERMISSIONS.COMMENTS_READ,
+    PERMISSIONS.COMMENTS_UPDATE,
+    PERMISSIONS.COMMENTS_DELETE,
+    PERMISSIONS.LABELS_CREATE,
+    PERMISSIONS.LABELS_READ,
+    PERMISSIONS.LABELS_UPDATE,
+    PERMISSIONS.LABELS_DELETE,
+    PERMISSIONS.CHECKLISTS_CREATE,
+    PERMISSIONS.CHECKLISTS_READ,
+    PERMISSIONS.CHECKLISTS_UPDATE,
+    PERMISSIONS.CHECKLISTS_DELETE,
+    PERMISSIONS.ATTACHMENTS_CREATE,
+    PERMISSIONS.ATTACHMENTS_READ,
+    PERMISSIONS.ATTACHMENTS_DELETE,
+  ],
+
+  // Board Member - Standard member
+  [ROLES.BOARD_MEMBER]: [
+    PERMISSIONS.BOARDS_READ,
+    PERMISSIONS.MEMBERS_READ,
+    PERMISSIONS.LISTS_CREATE,
+    PERMISSIONS.LISTS_READ,
+    PERMISSIONS.LISTS_UPDATE,
+    PERMISSIONS.CARDS_CREATE,
+    PERMISSIONS.CARDS_READ,
+    PERMISSIONS.CARDS_UPDATE,
+    PERMISSIONS.CARDS_ASSIGN,
+    PERMISSIONS.CARDS_MOVE,
+    PERMISSIONS.COMMENTS_CREATE,
+    PERMISSIONS.COMMENTS_READ,
+    PERMISSIONS.COMMENTS_UPDATE,
+    PERMISSIONS.LABELS_READ,
+    PERMISSIONS.CHECKLISTS_CREATE,
+    PERMISSIONS.CHECKLISTS_READ,
+    PERMISSIONS.CHECKLISTS_UPDATE,
+    PERMISSIONS.ATTACHMENTS_CREATE,
+    PERMISSIONS.ATTACHMENTS_READ,
+  ],
+
+  // Board Observer - View only
+  [ROLES.BOARD_OBSERVER]: [
+    PERMISSIONS.BOARDS_READ,
+    PERMISSIONS.MEMBERS_READ,
+    PERMISSIONS.LISTS_READ,
+    PERMISSIONS.CARDS_READ,
+    PERMISSIONS.COMMENTS_READ,
+    PERMISSIONS.LABELS_READ,
+    PERMISSIONS.CHECKLISTS_READ,
+    PERMISSIONS.ATTACHMENTS_READ,
+  ],
+
+  // Regular User
+  [ROLES.USER]: [
+    PERMISSIONS.WORKSPACES_CREATE,
+    PERMISSIONS.WORKSPACES_READ,
+    PERMISSIONS.BOARDS_READ,
+    PERMISSIONS.USERS_READ,
+    PERMISSIONS.USERS_UPDATE,
+  ],
+
+  // Guest - Very limited
+  [ROLES.GUEST]: [PERMISSIONS.BOARDS_READ, PERMISSIONS.CARDS_READ],
+};
+
+export class RBACProvider {
+  private workspaceMemberRepo = AppDataSource.getRepository(WorkspaceMembers);
+  private boardMemberRepo = AppDataSource.getRepository(BoardMembers);
+  private boardRepo = AppDataSource.getRepository(Board);
+  private workspaceRepo = AppDataSource.getRepository(Workspace);
+
+  private cache = new Map<string, { data: any; expiry: number }>();
+  private CACHE_TTL = 30000;
+
+  private getCached<T>(key: string): T | null {
+    const cached = this.cache.get(key);
+    if (cached && cached.expiry > Date.now()) {
+      return cached.data as T;
+    }
+    this.cache.delete(key);
+    return null;
+  }
+
+  private setCache(key: string, data: any): void {
+    this.cache.set(key, { data, expiry: Date.now() + this.CACHE_TTL });
+  }
+
+  async getWorkspaceMembership(
     userId: string,
     workspaceId: string
-  ): Promise<string[]> {
-    const members = await AppDataSource.getRepository(WorkspaceMembers).find({
-      where: { userId, workspaceId },
-      relations: ['role'],
-    });
-
-    return Array.from(
-      new Set(members.map((m) => m.role.name.toLowerCase().trim()))
+  ): Promise<{ role: Role; member: WorkspaceMembers } | null> {
+    const cacheKey = `ws_member_${userId}_${workspaceId}`;
+    const cached = this.getCached<{ role: Role; member: WorkspaceMembers }>(
+      cacheKey
     );
+    if (cached) return cached;
+
+    const member = await this.workspaceMemberRepo
+      .createQueryBuilder('wm')
+      .leftJoin('wm.role', 'role')
+      .where('wm.userId = :userId', { userId })
+      .andWhere('wm.workspaceId = :workspaceId', { workspaceId })
+      .select(['wm.id', 'wm.userId', 'wm.workspaceId', 'role.name'])
+      .getOne();
+
+    if (!member) return null;
+
+    const result = { role: member.role.name as Role, member };
+    this.setCache(cacheKey, result);
+    return result;
   }
 
-  // Lấy roles của user trong board
-  static async getUserRolesInBoard(
+  async getBoardMembership(
     userId: string,
     boardId: string
-  ): Promise<string[]> {
-    const members = await AppDataSource.getRepository(BoardMembers).find({
-      where: { userId, boardId },
-      relations: ['role'],
-    });
-
-    return Array.from(
-      new Set(members.map((m) => m.role.name.toLowerCase().trim()))
+  ): Promise<{ role: Role; member: BoardMembers } | null> {
+    const cacheKey = `board_member_${userId}_${boardId}`;
+    const cached = this.getCached<{ role: Role; member: BoardMembers }>(
+      cacheKey
     );
+    if (cached) return cached;
+
+    const member = await this.boardMemberRepo
+      .createQueryBuilder('bm')
+      .leftJoin('bm.role', 'role')
+      .where('bm.userId = :userId', { userId })
+      .andWhere('bm.boardId = :boardId', { boardId })
+      .select(['bm.id', 'bm.userId', 'bm.boardId', 'role.name'])
+      .getOne();
+
+    if (!member) return null;
+
+    const result = { role: member.role.name as Role, member };
+    this.setCache(cacheKey, result);
+    return result;
   }
 
-  // Lấy roles của user trong card
-  static async getUserRolesInCard(
-    userId: string,
-    cardId: string
-  ): Promise<string[]> {
-    const members = await AppDataSource.getRepository(CardMembers).find({
-      where: { userId, cardId },
-      relations: ['role'],
-    });
-
-    return Array.from(
-      new Set(members.map((m) => m.role.name.toLowerCase().trim()))
-    );
-  }
-
-  // Lấy permissions trong workspace
-  static async getUserPermissionsInWorkspace(
-    userId: string,
+  async canViewWorkspace(
+    userId: string | null,
     workspaceId: string
-  ): Promise<string[]> {
-    const members = await AppDataSource.getRepository(WorkspaceMembers).find({
-      where: { userId, workspaceId },
-      relations: [
-        'role',
-        'role.rolePermissions',
-        'role.rolePermissions.permission',
-      ],
+  ): Promise<AccessResult> {
+    const workspace = await this.workspaceRepo.findOne({
+      where: { id: workspaceId },
+      select: ['id', 'visibility', 'isArchived'],
     });
 
-    const permissions = members.flatMap((m) =>
-      m.role.rolePermissions.map((rp) =>
-        rp.permission.name.toLowerCase().trim()
-      )
-    );
-
-    return Array.from(new Set(permissions));
-  }
-
-  // Lấy permissions trong board
-  static async getUserPermissionsInBoard(
-    userId: string,
-    boardId: string
-  ): Promise<string[]> {
-    // Query board và memberships
-    const board = await AppDataSource.getRepository(Board).findOne({
-      where: { id: boardId },
-      relations: ['workspace'],
-    });
-
-    if (!board) {
-      return [];
+    if (!workspace) {
+      return { allowed: false, reason: 'Workspace not found' };
     }
 
-    // Query board và workspace members song song
-    const [boardMembers, workspaceMembers] = await Promise.all([
-      AppDataSource.getRepository(BoardMembers).find({
-        where: { userId, boardId },
-        relations: [
-          'role',
-          'role.rolePermissions',
-          'role.rolePermissions.permission',
-        ],
-      }),
-      board.workspace?.id
-        ? AppDataSource.getRepository(WorkspaceMembers).find({
-            where: { userId, workspaceId: board.workspace.id },
-            relations: [
-              'role',
-              'role.rolePermissions',
-              'role.rolePermissions.permission',
-            ],
-          })
-        : Promise.resolve([]),
-    ]);
-
-    // LAYER 2: Direct board permissions
-    const directPermissions = boardMembers.flatMap((m) =>
-      m.role.rolePermissions.map((rp) =>
-        rp.permission.name.toLowerCase().trim()
-      )
-    );
-
-    // LAYER 3: Inherited workspace permissions
-    // Workspace Admin/Owner → Full board permissions
-    const workspaceRoles = workspaceMembers.map((m) =>
-      m.role.name.toLowerCase().trim()
-    );
-
-    const isWorkspaceAdmin =
-      workspaceRoles.includes(ROLES.WORKSPACE_ADMIN.toLowerCase()) ||
-      workspaceRoles.includes(ROLES.ADMIN.toLowerCase());
-
-    let inheritedPermissions: string[] = [];
-
-    if (isWorkspaceAdmin) {
-      // Workspace admin inherit ALL board permissions
-      inheritedPermissions = [
-        ...PERMISSION_GROUPS.BOARDS.map((p) => p.toLowerCase()),
-        ...PERMISSION_GROUPS.LISTS.map((p) => p.toLowerCase()),
-        ...PERMISSION_GROUPS.CARDS.map((p) => p.toLowerCase()),
-        ...PERMISSION_GROUPS.COMMENTS.map((p) => p.toLowerCase()),
-        ...PERMISSION_GROUPS.MEMBERS.map((p) => p.toLowerCase()),
-        ...PERMISSION_GROUPS.LABELS.map((p) => p.toLowerCase()),
-        ...PERMISSION_GROUPS.CHECKLISTS.map((p) => p.toLowerCase()),
-        ...PERMISSION_GROUPS.ATTACHMENTS.map((p) => p.toLowerCase()),
-      ];
-    } else if (
-      board.visibility === 'workspace' &&
-      workspaceMembers.length > 0
-    ) {
-      // Workspace member trong workspace-visible board → Read-only permissions
-      inheritedPermissions = [
-        'boards:read',
-        'lists:read',
-        'cards:read',
-        'comments:read',
-        'members:read',
-        'labels:read',
-        'checklists:read',
-        'attachments:read',
-      ];
+    if (workspace.isArchived) {
+      return { allowed: false, reason: 'Workspace is archived' };
     }
 
-    // Gộp tất cả permissions và loại bỏ duplicate
-    const allPermissions = [...directPermissions, ...inheritedPermissions];
-    return Array.from(new Set(allPermissions));
-  }
-
-  static async checkBoardAccess(
-    userId: string,
-    boardId: string
-  ): Promise<{
-    visibility: 'public' | 'private' | 'workspace';
-    hasAccess: boolean;
-    accessLevel:
-      | 'public'
-      | 'guest'
-      | 'board-member'
-      | 'workspace-member'
-      | 'none';
-    isBoardMember: boolean;
-    isWorkspaceMember: boolean;
-    boardRole?: string;
-    workspaceRole?: string;
-    effectiveRole?: string; // Role cuối cùng được áp dụng
-  }> {
-    // Query board với workspace info
-    const board = await AppDataSource.getRepository(Board).findOne({
-      where: { id: boardId },
-      relations: ['workspace'],
-    });
-
-    if (!board) {
-      throw new Error('Board not found');
+    // Public workspace - ai cũng xem được
+    if (workspace.visibility === 'public') {
+      return { allowed: true };
     }
 
-    // Query memberships song song để tối ưu performance
-    const [boardMember, workspaceMember] = await Promise.all([
-      AppDataSource.getRepository(BoardMembers).findOne({
-        where: { userId, boardId },
-        relations: ['role'],
-      }),
-      board.workspace?.id
-        ? AppDataSource.getRepository(WorkspaceMembers).findOne({
-            where: { userId, workspaceId: board.workspace.id },
-            relations: ['role'],
-          })
-        : Promise.resolve(null),
-    ]);
-
-    const visibility = board.visibility as 'public' | 'private' | 'workspace';
-    const isBoardMember = !!boardMember;
-    const isWorkspaceMember = !!workspaceMember;
-    const boardRole = boardMember?.role?.name.toLowerCase().trim();
-    const workspaceRole = workspaceMember?.role?.name.toLowerCase().trim();
-
-    // LAYER 1: Visibility Check
-    if (visibility === 'public') {
-      return {
-        visibility,
-        hasAccess: true,
-        accessLevel: 'public',
-        isBoardMember,
-        isWorkspaceMember,
-        boardRole,
-        workspaceRole,
-        effectiveRole: boardRole || 'public-viewer',
-      };
+    // Private workspace - phải là member
+    if (!userId) {
+      return { allowed: false, reason: 'Authentication required' };
     }
 
-    // LAYER 2: Direct Board Membership
-    if (isBoardMember) {
-      return {
-        visibility,
-        hasAccess: true,
-        accessLevel: isWorkspaceMember ? 'board-member' : 'guest',
-        isBoardMember,
-        isWorkspaceMember,
-        boardRole,
-        workspaceRole,
-        effectiveRole: boardRole,
-      };
+    const membership = await this.getWorkspaceMembership(userId, workspaceId);
+    if (!membership) {
+      return { allowed: false, reason: 'Not a workspace member' };
     }
 
-    // LAYER 3: Inherited Workspace Membership
-    if (visibility === 'workspace' && isWorkspaceMember) {
-      // Workspace member có thể XEM board workspace visibility
-      // Nhưng không có quyền SỬA trừ khi là workspace admin
-      const isWorkspaceAdmin =
-        workspaceRole === ROLES.WORKSPACE_ADMIN.toLowerCase() ||
-        workspaceRole === ROLES.ADMIN.toLowerCase();
-
-      return {
-        visibility,
-        hasAccess: true,
-        accessLevel: 'workspace-member',
-        isBoardMember,
-        isWorkspaceMember,
-        boardRole,
-        workspaceRole,
-        effectiveRole: isWorkspaceAdmin
-          ? 'inherited-admin'
-          : 'workspace-viewer',
-      };
-    }
-
-    // LAYER 4: No Access
     return {
-      visibility,
-      hasAccess: false,
-      accessLevel: 'none',
-      isBoardMember,
-      isWorkspaceMember,
-      boardRole,
-      workspaceRole,
-      effectiveRole: undefined,
+      allowed: true,
+      userContext: {
+        userId,
+        workspaceRole: membership.role,
+        isWorkspaceMember: true,
+        isBoardMember: false,
+      },
     };
   }
 
-  // Lấy permissions trong card
-  static async getUserPermissionsInCard(
+  async canViewBoard(
+    userId: string | null,
+    boardId: string
+  ): Promise<AccessResult> {
+    const board = await this.boardRepo
+      .createQueryBuilder('board')
+      .leftJoin('board.workspace', 'workspace')
+      .where('board.id = :boardId', { boardId })
+      .select([
+        'board.id',
+        'board.visibility',
+        'board.isClosed',
+        'workspace.id',
+        'workspace.visibility',
+      ])
+      .getOne();
+
+    if (!board) {
+      return { allowed: false, reason: 'Board not found' };
+    }
+
+    if (board.isClosed) {
+      // Board closed - chỉ board members mới xem được
+      if (!userId) {
+        return { allowed: false, reason: 'Board is closed' };
+      }
+      const boardMembership = await this.getBoardMembership(userId, boardId);
+      if (!boardMembership) {
+        return { allowed: false, reason: 'Board is closed' };
+      }
+    }
+
+    const visibility = board.visibility as BoardVisibility;
+
+    if (visibility === 'public') {
+      return { allowed: true };
+    }
+
+    if (!userId) {
+      return { allowed: false, reason: 'Authentication required' };
+    }
+
+    if (visibility === 'workspace') {
+      const workspaceMembership = await this.getWorkspaceMembership(
+        userId,
+        board.workspace.id
+      );
+      if (workspaceMembership) {
+        return {
+          allowed: true,
+          userContext: {
+            userId,
+            workspaceRole: workspaceMembership.role,
+            isWorkspaceMember: true,
+            isBoardMember: false,
+          },
+        };
+      }
+    }
+
+    const boardMembership = await this.getBoardMembership(userId, boardId);
+    if (boardMembership) {
+      const workspaceMembership = await this.getWorkspaceMembership(
+        userId,
+        board.workspace.id
+      );
+      return {
+        allowed: true,
+        userContext: {
+          userId,
+          workspaceRole: workspaceMembership?.role,
+          boardRole: boardMembership.role,
+          isWorkspaceMember: !!workspaceMembership,
+          isBoardMember: true,
+        },
+      };
+    }
+
+    return { allowed: false, reason: 'Not authorized to view this board' };
+  }
+
+  async hasWorkspacePermission(
     userId: string,
-    cardId: string
-  ): Promise<string[]> {
-    const members = await AppDataSource.getRepository(CardMembers).find({
-      where: { userId, cardId },
-      relations: [
-        'role',
-        'role.rolePermissions',
-        'role.rolePermissions.permission',
-      ],
+    workspaceId: string,
+    permission: Permission
+  ): Promise<boolean> {
+    const membership = await this.getWorkspaceMembership(userId, workspaceId);
+    if (!membership) return false;
+
+    const rolePermissions = ROLE_PERMISSIONS[membership.role] || [];
+    return rolePermissions.includes(permission);
+  }
+
+  async hasBoardPermission(
+    userId: string,
+    boardId: string,
+    permission: Permission
+  ): Promise<boolean> {
+    const board = await this.boardRepo.findOne({
+      where: { id: boardId },
+      relations: ['workspace'],
+      select: ['id', 'visibility'],
     });
 
-    const permissions = members.flatMap((m) =>
-      m.role.rolePermissions.map((rp) =>
-        rp.permission.name.toLowerCase().trim()
-      )
+    if (!board) return false;
+
+    const boardMembership = await this.getBoardMembership(userId, boardId);
+    const boardPermissions = boardMembership
+      ? ROLE_PERMISSIONS[boardMembership.role] || []
+      : [];
+    console.log('Board Permissions:', boardPermissions);
+    const workspaceMembership = await this.getWorkspaceMembership(
+      userId,
+      board.workspace.id
     );
+    const workspacePermissions = workspaceMembership
+      ? ROLE_PERMISSIONS[workspaceMembership.role] || []
+      : [];
 
-    return Array.from(new Set(permissions));
+    return (
+      boardPermissions.includes(permission) ||
+      workspacePermissions.includes(permission)
+    );
   }
 
-  // Lấy tất cả roles của user
-  static async getUserAllRoles(userId: string): Promise<string[]> {
-    const [workspaceMembers, boardMembers, cardMembers] = await Promise.all([
-      AppDataSource.getRepository(WorkspaceMembers).find({
-        where: { userId },
-        relations: ['role'],
-      }),
-      AppDataSource.getRepository(BoardMembers).find({
-        where: { userId },
-        relations: ['role'],
-      }),
-      AppDataSource.getRepository(CardMembers).find({
-        where: { userId },
-        relations: ['role'],
-      }),
-    ]);
-
-    const allRoles = [
-      ...workspaceMembers.map((m) => m.role.name.toLowerCase().trim()),
-      ...boardMembers.map((m) => m.role.name.toLowerCase().trim()),
-      ...cardMembers.map((m) => m.role.name.toLowerCase().trim()),
-    ];
-
-    return Array.from(new Set(allRoles));
-  }
-
-  // Lấy tất cả permissions của user
-  static async getUserAllPermissions(userId: string): Promise<string[]> {
-    const [workspaceMembers, boardMembers, cardMembers] = await Promise.all([
-      AppDataSource.getRepository(WorkspaceMembers).find({
-        where: { userId },
-        relations: [
-          'role',
-          'role.rolePermissions',
-          'role.rolePermissions.permission',
-        ],
-      }),
-      AppDataSource.getRepository(BoardMembers).find({
-        where: { userId },
-        relations: [
-          'role',
-          'role.rolePermissions',
-          'role.rolePermissions.permission',
-        ],
-      }),
-      AppDataSource.getRepository(CardMembers).find({
-        where: { userId },
-        relations: [
-          'role',
-          'role.rolePermissions',
-          'role.rolePermissions.permission',
-        ],
-      }),
-    ]);
-
-    const allPermissions = [
-      ...workspaceMembers.flatMap((m) =>
-        m.role.rolePermissions.map((rp) =>
-          rp.permission.name.toLowerCase().trim()
-        )
-      ),
-      ...boardMembers.flatMap((m) =>
-        m.role.rolePermissions.map((rp) =>
-          rp.permission.name.toLowerCase().trim()
-        )
-      ),
-      ...cardMembers.flatMap((m) =>
-        m.role.rolePermissions.map((rp) =>
-          rp.permission.name.toLowerCase().trim()
-        )
-      ),
-    ];
-
-    return Array.from(new Set(allPermissions));
-  }
-
-  // Helper: attachUserAuthz
-  static async attachUserAuthz(
+  async getEffectiveBoardRole(
     userId: string,
-    context?: { type: 'workspace' | 'board' | 'card'; id: string }
-  ) {
-    if (!context) {
-      const [roles, permissions] = await Promise.all([
-        this.getUserAllRoles(userId),
-        this.getUserAllPermissions(userId),
-      ]);
-      return { roles, permissions };
+    boardId: string
+  ): Promise<Role | null> {
+    const board = await this.boardRepo.findOne({
+      where: { id: boardId },
+      relations: ['workspace'],
+    });
+
+    if (!board) return null;
+
+    const [boardMembership, workspaceMembership] = await Promise.all([
+      this.getBoardMembership(userId, boardId),
+      this.getWorkspaceMembership(userId, board.workspace.id),
+    ]);
+
+    if (workspaceMembership) {
+      const adminRoles: Role[] = [
+        ROLES.WORKSPACE_ADMIN,
+        ROLES.WORKSPACE_MODERATOR,
+      ];
+      if (adminRoles.includes(workspaceMembership.role)) {
+        return workspaceMembership.role;
+      }
     }
 
-    let roles: string[] = [];
-    let permissions: string[] = [];
-
-    switch (context.type) {
-      case 'workspace':
-        [roles, permissions] = await Promise.all([
-          this.getUserRolesInWorkspace(userId, context.id),
-          this.getUserPermissionsInWorkspace(userId, context.id),
-        ]);
-        break;
-      case 'board':
-        [roles, permissions] = await Promise.all([
-          this.getUserRolesInBoard(userId, context.id),
-          this.getUserPermissionsInBoard(userId, context.id),
-        ]);
-        break;
-      case 'card':
-        [roles, permissions] = await Promise.all([
-          this.getUserRolesInCard(userId, context.id),
-          this.getUserPermissionsInCard(userId, context.id),
-        ]);
-        break;
+    if (boardMembership) {
+      return boardMembership.role;
     }
 
-    return { roles, permissions };
+    if (board.visibility === 'workspace' && workspaceMembership) {
+      return workspaceMembership.role;
+    }
+
+    return null;
+  }
+
+  static roleHasPermission(role: Role, permission: Permission): boolean {
+    const permissions = ROLE_PERMISSIONS[role] || [];
+    return permissions.includes(permission);
+  }
+
+  static getRolePermissions(role: Role): Permission[] {
+    return ROLE_PERMISSIONS[role] || [];
+  }
+
+  clearCache(userId?: string, resourceId?: string): void {
+    if (userId && resourceId) {
+      this.cache.delete(`ws_member_${userId}_${resourceId}`);
+      this.cache.delete(`board_member_${userId}_${resourceId}`);
+    } else {
+      this.cache.clear();
+    }
   }
 }
+
+export const rbacProvider = new RBACProvider();
+
+export { ROLE_PERMISSIONS };
