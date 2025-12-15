@@ -200,8 +200,12 @@ route.patch(
   validateRequest(MoveListToBoardSchema),
   async (req, res) => {
     const listId = req.params.id;
-    const { boardId } = req.body;
-    const response = await ListController.moveListToBoard(listId, boardId);
+    const { boardId, position } = req.body;
+    const response = await ListController.moveListToBoard(
+      listId,
+      boardId,
+      position
+    );
     return handleServiceResponse(response, res);
   }
 );

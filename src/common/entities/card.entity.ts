@@ -51,10 +51,15 @@ export class Card extends DateTimeEntity {
   @Column({ type: 'boolean', default: false })
   isArchived: boolean;
 
+  @Column({ type: 'uuid' })
+  listId: string;
+
   @ManyToOne(() => List, (list) => list.cards)
   @JoinColumn({ name: 'listId' })
   list: List;
 
+  @Column({ type: 'uuid' })
+  boardId: string;
   @ManyToOne(() => Board, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'boardId' })
   board: Board;

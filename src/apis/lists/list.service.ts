@@ -1,22 +1,19 @@
 import { AppDataSource } from '@/config/data-source';
 import { ListRepository } from './list.repository';
-import { Board } from '@/common/entities/board.entity';
 import { BoardMembers } from '@/common/entities/board-member.entity';
 import { List } from '@/common/entities/list.entity';
+import { BoardRepository } from '../boards/board.repository';
 
 export class ListService {
   private listRepository = new ListRepository();
-  private boardRepository = AppDataSource.getRepository(Board);
+  private boardRepository = new BoardRepository();
   private boardMemberRepository = AppDataSource.getRepository(BoardMembers);
   async getAllListsByBoard(boardId: string): Promise<List[]> {
     return await this.listRepository.getAllListsByBoard(boardId);
   }
 
   async createList(boardId: string, title: string, currentUserId: string) {
-    const board = await this.boardRepository.findOne({
-      where: { id: boardId },
-      select: ['id', 'isClosed'],
-    });
+    const board = await this.boardRepository.findBoardById(boardId);
     if (!board) throw new Error('Board not found');
     if (board.isClosed) throw new Error('Board is closed');
 
@@ -95,18 +92,24 @@ export class ListService {
     return { archivedCount: cardIds.length };
   }
 
-  async moveListToBoard(listId: string, boardId: string) {
-    const list = await this.listRepository.findListById(listId);
-    if (!list) {
-      throw new Error('List not found');
+  async moveListToBoard(listId: string, boardId: string, position: number) {
+    const [list, board] = await Promise.all([
+      this.listRepository.findListById(listId),
+      this.boardRepository.findBoardById(boardId, true),
+    ]);
+    if (!list || list.isArchived) {
+      throw new Error('List not found or is archived');
     }
 
-    const board = await this.listRepository.findBoardById(boardId);
-    if (!board) {
-      throw new Error('Target board not found');
+    if (!board || board.isClosed) {
+      throw new Error('Target board not found or is archived');
     }
 
-    return await this.listRepository.moveListToBoard(listId, boardId);
+    if (position < 1 || position > board.lists.length + 1) {
+      throw new Error('Invalid position');
+    }
+
+    return await this.listRepository.moveListToBoard(listId, boardId, position);
   }
 
   async moveAllCardsToAnotherList(
@@ -114,16 +117,27 @@ export class ListService {
     targetListId: string,
     targetBoardId?: string
   ) {
-    const [sourceList, targetList, targetBoard] = await Promise.all([
-      this.listRepository.findListById(sourceListId, false),
-      this.listRepository.findListById(targetListId, false),
-      targetBoardId ? this.listRepository.findBoardById(targetBoardId) : null,
-    ]);
+    const [sourceList, targetList, targetBoard, cardPosition] =
+      await Promise.all([
+        this.listRepository.findListById(sourceListId, false),
+        this.listRepository.findListById(targetListId, false),
+        targetBoardId
+          ? this.boardRepository.findBoardById(targetBoardId)
+          : null,
+        this.listRepository.getMaxPositionInList(targetListId),
+      ]);
 
-    if (!sourceList) throw new Error('Source list not found');
-    if (!targetList) throw new Error('Target list not found');
+    if (!sourceList || sourceList.isArchived)
+      throw new Error('Source list not found or is archived');
+
+    if (!targetList || targetList.isArchived)
+      throw new Error('Target list not found or is archived');
+
     if (targetBoardId && !targetBoard)
       throw new Error('Target board not found');
+
+    if (sourceListId === targetListId)
+      throw new Error('Source and target lists are the same');
 
     // Lấy chỉ IDs thay vì full entities
     const cardIds = await this.listRepository.getCardIdsFromList(sourceListId);
@@ -136,7 +150,8 @@ export class ListService {
     await this.listRepository.updateCardsListAndBoard(
       cardIds,
       targetListId,
-      targetBoardId
+      targetBoardId,
+      Math.floor(cardPosition + 1)
     );
 
     return { movedCount: cardIds.length };
@@ -152,17 +167,16 @@ export class ListService {
     const [sourceList, targetBoard, sourceCards, maxPosition] =
       await Promise.all([
         this.listRepository.findListById(sourceListId, false),
-        this.listRepository.findBoardById(targetBoardId),
+        this.boardRepository.findBoardById(targetBoardId),
         this.listRepository.getCardsByList(sourceListId, false),
-        position === undefined
-          ? this.listRepository.getMaxPositionInBoard(targetBoardId)
-          : Promise.resolve(-1),
+        this.listRepository.getMaxPositionInBoard(targetBoardId),
       ]);
 
     if (!sourceList) throw new Error('Source list not found');
     if (!targetBoard) throw new Error('Target board not found');
+    if (position > maxPosition + 1) throw new Error('Invalid position');
 
-    const newPosition = position ?? maxPosition + 1;
+    const newPosition = position ?? Math.floor(maxPosition + 1);
     const newTitle = title || `${sourceList.title} (Copy)`;
 
     // Sử dụng transaction với bulk insert
