@@ -25,7 +25,7 @@ export class List extends DateTimeEntity {
   @Column({ type: 'varchar', length: 255 })
   title: string;
 
-  @Column({ type: 'float', default: 0 })
+  @Column({ type: 'float', default: 0, unsigned: true })
   position: number;
 
   @Column({ type: 'boolean', default: false })
