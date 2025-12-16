@@ -15,6 +15,8 @@ import { RolePermission } from '@/common/entities/role-permission.entity';
 import { User } from '@/common/entities/user.entity';
 import { Workspace } from '@/common/entities/workspace.entity';
 import { WorkspaceMembers } from '@/common/entities/workspace-member.entity';
+import { BoardTemplate } from '@/common/entities/board-template.entity';
+
 dotenv.config();
 
 export const AppDataSource = new DataSource({
@@ -41,6 +43,7 @@ export const AppDataSource = new DataSource({
     RolePermission,
     Permission,
     BoardMembers,
+    BoardTemplate,
   ],
   migrations: ['src/migration/**/*.ts'],
   subscribers: [],
