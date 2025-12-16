@@ -3,6 +3,8 @@ import { WorkspaceMembers } from '@/common/entities/workspace-member.entity';
 import { BoardMembers } from '@/common/entities/board-member.entity';
 import { Board } from '@/common/entities/board.entity';
 import { Workspace } from '@/common/entities/workspace.entity';
+import { List } from '@/common/entities/list.entity';
+import { Card } from '@/common/entities/card.entity';
 import { ROLES, Role } from '@/common/constants/roles';
 import { Permission, PERMISSIONS } from '@/common/constants/permissions';
 
@@ -278,6 +280,8 @@ export class RBACProvider {
   private boardMemberRepo = AppDataSource.getRepository(BoardMembers);
   private boardRepo = AppDataSource.getRepository(Board);
   private workspaceRepo = AppDataSource.getRepository(Workspace);
+  private listRepo = AppDataSource.getRepository(List);
+  private cardRepo = AppDataSource.getRepository(Card);
 
   private cache = new Map<string, { data: any; expiry: number }>();
   private CACHE_TTL = 30000;
@@ -343,6 +347,42 @@ export class RBACProvider {
     const result = { role: member.role.name as Role, member };
     this.setCache(cacheKey, result);
     return result;
+  }
+
+  async getBoardIdFromList(listId: string): Promise<string | null> {
+    const cacheKey = `list_board_${listId}`;
+    const cached = this.getCached<string>(cacheKey);
+    if (cached) return cached;
+
+    const list = await this.listRepo
+      .createQueryBuilder('list')
+      .leftJoin('list.board', 'board')
+      .where('list.id = :listId', { listId })
+      .select(['list.id', 'board.id'])
+      .getOne();
+
+    if (!list?.board?.id) return null;
+
+    this.setCache(cacheKey, list.board.id);
+    return list.board.id;
+  }
+
+  async getBoardIdFromCard(cardId: string): Promise<string | null> {
+    const cacheKey = `card_board_${cardId}`;
+    const cached = this.getCached<string>(cacheKey);
+    if (cached) return cached;
+
+    const card = await this.cardRepo
+      .createQueryBuilder('card')
+      .leftJoin('card.board', 'board')
+      .where('card.id = :cardId', { cardId })
+      .select(['card.id', 'board.id'])
+      .getOne();
+
+    if (!card?.board?.id) return null;
+
+    this.setCache(cacheKey, card.board.id);
+    return card.board.id;
   }
 
   async canViewWorkspace(
@@ -478,6 +518,12 @@ export class RBACProvider {
     if (!membership) return false;
 
     const rolePermissions = ROLE_PERMISSIONS[membership.role] || [];
+    console.log(
+      'Checking permission:',
+      permission,
+      ". User's permissions:\n",
+      rolePermissions
+    );
     return rolePermissions.includes(permission);
   }
 
@@ -498,7 +544,7 @@ export class RBACProvider {
     const boardPermissions = boardMembership
       ? ROLE_PERMISSIONS[boardMembership.role] || []
       : [];
-    console.log('Board Permissions:', boardPermissions);
+
     const workspaceMembership = await this.getWorkspaceMembership(
       userId,
       board.workspace.id
@@ -506,7 +552,14 @@ export class RBACProvider {
     const workspacePermissions = workspaceMembership
       ? ROLE_PERMISSIONS[workspaceMembership.role] || []
       : [];
-
+    console.log(
+      'Checking permission:',
+      permission,
+      ". User's board permissions:\n",
+      boardPermissions,
+      "\nUser's workspace permissions:\n",
+      workspacePermissions
+    );
     return (
       boardPermissions.includes(permission) ||
       workspacePermissions.includes(permission)

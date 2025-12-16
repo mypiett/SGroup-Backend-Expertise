@@ -15,6 +15,7 @@ import authenticateJWT from '@/common/middleware/authentication';
 import {
   checkBoardAccess,
   requireBoardPermissions,
+  requireListPermissions,
 } from '@/common/middleware/authorization';
 import { PERMISSIONS } from '@/common/constants/permissions';
 
@@ -105,7 +106,7 @@ route.patch(
   '/:id/archive',
   authenticateJWT,
   validateRequest(ListIdSchema),
-  requireBoardPermissions(PERMISSIONS.LISTS_ARCHIVE),
+  requireListPermissions(PERMISSIONS.LISTS_ARCHIVE),
   async (req, res) => {
     const listId = req.params.id;
     const response = await ListController.archiveList(listId);
@@ -141,7 +142,7 @@ route.patch(
   '/:id/reopen',
   authenticateJWT,
   validateRequest(ListIdSchema),
-  requireBoardPermissions(PERMISSIONS.LISTS_UPDATE),
+  requireListPermissions(PERMISSIONS.LISTS_UPDATE),
   async (req, res) => {
     const listId = req.params.id;
     const response = await ListController.unarchiveList(listId);
@@ -177,7 +178,7 @@ route.patch(
   '/:id/archive-all-cards',
   authenticateJWT,
   validateRequest(ListIdSchema),
-  requireBoardPermissions(PERMISSIONS.CARDS_ARCHIVE),
+  requireListPermissions(PERMISSIONS.CARDS_ARCHIVE),
   async (req, res) => {
     const listId = req.params.id;
     const response = await ListController.archiveAllCardsInList(listId);
@@ -226,7 +227,7 @@ route.patch(
   '/:id/move',
   authenticateJWT,
   validateRequest(MoveListToBoardSchema),
-  requireBoardPermissions(PERMISSIONS.LISTS_UPDATE),
+  requireListPermissions(PERMISSIONS.LISTS_UPDATE),
   async (req, res) => {
     const listId = req.params.id;
     const { boardId, position } = req.body;
@@ -285,7 +286,7 @@ route.patch(
   '/:id/move-all-cards',
   authenticateJWT,
   validateRequest(MoveAllCardsSchema),
-  requireBoardPermissions(PERMISSIONS.CARDS_MOVE),
+  requireListPermissions(PERMISSIONS.CARDS_MOVE),
   async (req, res) => {
     const listId = req.params.id;
     const { targetListId, targetBoardId } = req.body;
@@ -349,7 +350,7 @@ route.post(
   '/:id/copy',
   authenticateJWT,
   validateRequest(CopyListSchema),
-  requireBoardPermissions(PERMISSIONS.LISTS_CREATE),
+  requireListPermissions(PERMISSIONS.LISTS_CREATE),
   async (req, res) => {
     const listId = req.params.id;
     const { targetBoardId, title, position } = req.body;
