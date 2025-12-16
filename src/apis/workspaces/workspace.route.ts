@@ -4,7 +4,7 @@ import { handleServiceResponse } from '@/common/utils/httpHandlers';
 import authenticateJWT from '@/common/middleware/authentication';
 import {
   requireWorkspacePermissions,
-  canAccessWorkspace,
+  checkWorkspaceAccess,
   workspaceMember,
 } from '@/common/middleware/authorization';
 import { PERMISSIONS } from '@/common/constants/permissions';
@@ -148,7 +148,7 @@ route.get('/archived', authenticateJWT, async (req, res) => {
 route.get(
   '/:id',
   authenticateJWT,
-  canAccessWorkspace('id'),
+  checkWorkspaceAccess('id'),
   async (req, res) => {
     const serviceResponse = await WorkspaceController.getWorkspaceById(req);
     return handleServiceResponse(serviceResponse, res);
