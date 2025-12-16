@@ -6,7 +6,7 @@ import {
 } from '@/common/utils/httpHandlers';
 import {
   checkBoardAccess,
-  requireBoardPermissions,
+  requireBoardPermission,
   requireWorkspaceRoles,
 } from '@/common/middleware/authorization';
 import { PERMISSIONS } from '@/common/constants/permissions';
@@ -178,7 +178,7 @@ route.get('/:id', checkBoardAccess('id'), async (req, res) => {
  */
 route.put(
   '/:id',
-  requireBoardPermissions(PERMISSIONS.BOARDS_UPDATE),
+  requireBoardPermission(PERMISSIONS.BOARDS_UPDATE),
   async (req, res) => {
     const serviceResponse = await BoardController.update(req);
     return handleServiceResponse(serviceResponse, res);
@@ -212,7 +212,7 @@ route.put(
  */
 route.patch(
   '/:id/archive',
-  requireBoardPermissions(PERMISSIONS.BOARDS_DELETE),
+  requireBoardPermission(PERMISSIONS.BOARDS_DELETE),
   async (req, res) => {
     const serviceResponse = await BoardController.closeBoard(req);
     return handleServiceResponse(serviceResponse, res);
@@ -246,7 +246,7 @@ route.patch(
  */
 route.patch(
   '/:id/reopen',
-  requireBoardPermissions(PERMISSIONS.BOARDS_UPDATE),
+  requireBoardPermission(PERMISSIONS.BOARDS_UPDATE),
   async (req, res) => {
     const serviceResponse = await BoardController.reopenBoard(req);
     return handleServiceResponse(serviceResponse, res);
@@ -280,7 +280,7 @@ route.patch(
  */
 route.delete(
   '/:id',
-  requireBoardPermissions(PERMISSIONS.BOARDS_DELETE),
+  requireBoardPermission(PERMISSIONS.BOARDS_DELETE),
   async (req, res) => {
     const serviceResponse = await BoardController.deleteBoardPermanently(req);
     return handleServiceResponse(serviceResponse, res);
@@ -367,7 +367,7 @@ route.delete(
 route.post(
   '/:id/invite',
   validateHandle(addMemberToBoardSchema),
-  requireBoardPermissions(PERMISSIONS.MEMBERS_INVITE),
+  requireBoardPermission(PERMISSIONS.MEMBERS_INVITE),
   async (req, res) => {
     const serviceResponse = await BoardController.addMemberToBoard(req);
     return handleServiceResponse(serviceResponse, res);
@@ -411,7 +411,7 @@ route.post(
  */
 route.post(
   '/:id/generate-link',
-  requireBoardPermissions(PERMISSIONS.MEMBERS_INVITE),
+  requireBoardPermission(PERMISSIONS.MEMBERS_INVITE),
   async (req, res) => {
     const serviceResponse = await BoardController.createLinkShareBoard(req);
     return handleServiceResponse(serviceResponse, res);
@@ -452,7 +452,7 @@ route.post(
  */
 route.delete(
   '/:id/invite-link',
-  requireBoardPermissions(PERMISSIONS.MEMBERS_MANAGE),
+  requireBoardPermission(PERMISSIONS.MEMBERS_MANAGE),
   async (req, res) => {
     const serviceResponse = await BoardController.deleteLinkShareBoard(req);
     return handleServiceResponse(serviceResponse, res);

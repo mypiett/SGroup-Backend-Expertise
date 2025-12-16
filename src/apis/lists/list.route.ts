@@ -14,8 +14,8 @@ import {
 import authenticateJWT from '@/common/middleware/authentication';
 import {
   checkBoardAccess,
-  requireBoardPermissions,
-  requireListPermissions,
+  requireBoardPermission,
+  requireListPermission,
 } from '@/common/middleware/authorization';
 import { PERMISSIONS } from '@/common/constants/permissions';
 
@@ -70,7 +70,7 @@ route.post(
   '/boards/:boardId/lists',
   authenticateJWT,
   validateRequest(CreateListSchema),
-  requireBoardPermissions(PERMISSIONS.LISTS_CREATE, 'boardId'),
+  requireBoardPermission(PERMISSIONS.LISTS_CREATE, 'boardId'),
   async (req, res) => {
     const response = await ListController.createList(req);
     return handleServiceResponse(response, res);
@@ -106,7 +106,7 @@ route.patch(
   '/:id/archive',
   authenticateJWT,
   validateRequest(ListIdSchema),
-  requireListPermissions(PERMISSIONS.LISTS_ARCHIVE),
+  requireListPermission(PERMISSIONS.LISTS_ARCHIVE),
   async (req, res) => {
     const listId = req.params.id;
     const response = await ListController.archiveList(listId);
@@ -142,7 +142,7 @@ route.patch(
   '/:id/reopen',
   authenticateJWT,
   validateRequest(ListIdSchema),
-  requireListPermissions(PERMISSIONS.LISTS_UPDATE),
+  requireListPermission(PERMISSIONS.LISTS_UPDATE),
   async (req, res) => {
     const listId = req.params.id;
     const response = await ListController.unarchiveList(listId);
@@ -178,7 +178,7 @@ route.patch(
   '/:id/archive-all-cards',
   authenticateJWT,
   validateRequest(ListIdSchema),
-  requireListPermissions(PERMISSIONS.CARDS_ARCHIVE),
+  requireListPermission(PERMISSIONS.CARDS_ARCHIVE),
   async (req, res) => {
     const listId = req.params.id;
     const response = await ListController.archiveAllCardsInList(listId);
@@ -227,7 +227,7 @@ route.patch(
   '/:id/move',
   authenticateJWT,
   validateRequest(MoveListToBoardSchema),
-  requireListPermissions(PERMISSIONS.LISTS_UPDATE),
+  requireListPermission(PERMISSIONS.LISTS_UPDATE),
   async (req, res) => {
     const listId = req.params.id;
     const { boardId, position } = req.body;
@@ -286,7 +286,7 @@ route.patch(
   '/:id/move-all-cards',
   authenticateJWT,
   validateRequest(MoveAllCardsSchema),
-  requireListPermissions(PERMISSIONS.CARDS_MOVE),
+  requireListPermission(PERMISSIONS.CARDS_MOVE),
   async (req, res) => {
     const listId = req.params.id;
     const { targetListId, targetBoardId } = req.body;
@@ -350,7 +350,7 @@ route.post(
   '/:id/copy',
   authenticateJWT,
   validateRequest(CopyListSchema),
-  requireListPermissions(PERMISSIONS.LISTS_CREATE),
+  requireListPermission(PERMISSIONS.LISTS_CREATE),
   async (req, res) => {
     const listId = req.params.id;
     const { targetBoardId, title, position } = req.body;

@@ -3,9 +3,9 @@ import { WorkspaceController } from './workspace.controller';
 import { handleServiceResponse } from '@/common/utils/httpHandlers';
 import authenticateJWT from '@/common/middleware/authentication';
 import {
-  requireWorkspacePermissions,
-  canAccessWorkspace,
-  workspaceMember,
+  requireWorkspacePermission,
+  checkWorkspaceAccess,
+  requireWorkspaceMember,
 } from '@/common/middleware/authorization';
 import { PERMISSIONS } from '@/common/constants/permissions';
 
@@ -148,7 +148,7 @@ route.get('/archived', authenticateJWT, async (req, res) => {
 route.get(
   '/:id',
   authenticateJWT,
-  canAccessWorkspace('id'),
+  checkWorkspaceAccess('id'),
   async (req, res) => {
     const serviceResponse = await WorkspaceController.getWorkspaceById(req);
     return handleServiceResponse(serviceResponse, res);
@@ -198,7 +198,7 @@ route.get(
 route.put(
   '/:id',
   authenticateJWT,
-  requireWorkspacePermissions([PERMISSIONS.WORKSPACES_UPDATE]),
+  requireWorkspacePermission(PERMISSIONS.WORKSPACES_UPDATE),
   async (req, res) => {
     const serviceResponse = await WorkspaceController.updateWorkspace(req);
     return handleServiceResponse(serviceResponse, res);
@@ -235,7 +235,7 @@ route.put(
 route.delete(
   '/:id',
   authenticateJWT,
-  requireWorkspacePermissions([PERMISSIONS.WORKSPACES_DELETE]),
+  requireWorkspacePermission(PERMISSIONS.WORKSPACES_DELETE),
   async (req, res) => {
     const serviceResponse = await WorkspaceController.deleteWorkspace(req);
     return handleServiceResponse(serviceResponse, res);
@@ -272,7 +272,7 @@ route.delete(
 route.patch(
   '/:id/archive',
   authenticateJWT,
-  requireWorkspacePermissions([PERMISSIONS.WORKSPACES_DELETE]),
+  requireWorkspacePermission(PERMISSIONS.WORKSPACES_DELETE),
   async (req, res) => {
     const serviceResponse = await WorkspaceController.archiveWorkspace(req);
     return handleServiceResponse(serviceResponse, res);
@@ -309,7 +309,7 @@ route.patch(
 route.patch(
   '/:id/reopen',
   authenticateJWT,
-  requireWorkspacePermissions([PERMISSIONS.WORKSPACES_UPDATE]),
+  requireWorkspacePermission(PERMISSIONS.WORKSPACES_UPDATE),
   async (req, res) => {
     const serviceResponse = await WorkspaceController.reopenWorkspace(req);
     return handleServiceResponse(serviceResponse, res);
@@ -346,7 +346,7 @@ route.patch(
 route.get(
   '/:id/members',
   authenticateJWT,
-  workspaceMember,
+  requireWorkspaceMember(),
   async (req, res) => {
     const serviceResponse = await WorkspaceController.getWorkspaceMembers(req);
     return handleServiceResponse(serviceResponse, res);
@@ -398,7 +398,7 @@ route.get(
 route.post(
   '/:id/members',
   authenticateJWT,
-  requireWorkspacePermissions([PERMISSIONS.MEMBERS_INVITE]),
+  requireWorkspacePermission(PERMISSIONS.MEMBERS_INVITE),
   async (req, res) => {
     const serviceResponse = await WorkspaceController.addMember(req);
     return handleServiceResponse(serviceResponse, res);
@@ -455,7 +455,7 @@ route.post(
 route.post(
   '/:id/invite',
   authenticateJWT,
-  requireWorkspacePermissions([PERMISSIONS.MEMBERS_INVITE]),
+  requireWorkspacePermission(PERMISSIONS.MEMBERS_INVITE),
   async (req, res) => {
     const serviceResponse = await WorkspaceController.inviteMemberByEmail(req);
     return handleServiceResponse(serviceResponse, res);
@@ -510,7 +510,7 @@ route.post(
 route.patch(
   '/:id/members/:memberId',
   authenticateJWT,
-  requireWorkspacePermissions([PERMISSIONS.MEMBERS_MANAGE]),
+  requireWorkspacePermission(PERMISSIONS.MEMBERS_MANAGE),
   async (req, res) => {
     const serviceResponse = await WorkspaceController.updateMemberRole(req);
     return handleServiceResponse(serviceResponse, res);
@@ -553,7 +553,7 @@ route.patch(
 route.delete(
   '/:id/members/:memberId',
   authenticateJWT,
-  requireWorkspacePermissions([PERMISSIONS.MEMBERS_REMOVE]),
+  requireWorkspacePermission(PERMISSIONS.MEMBERS_REMOVE),
   async (req, res) => {
     const serviceResponse = await WorkspaceController.removeMember(req);
     return handleServiceResponse(serviceResponse, res);
@@ -632,7 +632,7 @@ route.delete(
 route.patch(
   '/:id/visibility',
   authenticateJWT,
-  requireWorkspacePermissions([PERMISSIONS.WORKSPACES_MANAGE]),
+  requireWorkspacePermission(PERMISSIONS.WORKSPACES_MANAGE),
   async (req, res) => {
     const serviceResponse = await WorkspaceController.updateVisibility(req);
     return handleServiceResponse(serviceResponse, res);
