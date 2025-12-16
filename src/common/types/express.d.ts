@@ -20,8 +20,8 @@ declare global {
         email: string;
         [key: string]: any;
       };
-
       userContext?: UserContext;
+      resolvedBoardId?: string;
 
       file?: MulterFile;
       files?: MulterFile[] | { [fieldname: string]: MulterFile[] };
