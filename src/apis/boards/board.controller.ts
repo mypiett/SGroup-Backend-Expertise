@@ -5,8 +5,11 @@ import {
   ResponseStatus,
 } from '@/common/models/serviceResponse';
 import { StatusCodes } from 'http-status-codes';
+import { uploadBoardCoverToCloudinary } from '@/config/cloudinary';
 
 const boardService = new BoardService();
+import { UserService } from '../users/user.service'; // chỉnh đường dẫn cho đúng
+const userService = new UserService();
 
 export class BoardController {
   static async create(req: Request): Promise<ServiceResponse<any>> {
@@ -289,6 +292,313 @@ export class BoardController {
       return new ServiceResponse(
         ResponseStatus.Failed,
         error.message,
+        null,
+        StatusCodes.BAD_REQUEST
+      );
+    }
+  }
+
+  static async transferOwnership(req: Request): Promise<ServiceResponse<any>> {
+    try {
+      const boardId = req.params.id;
+      const { newOwnerId } = req.body;
+
+      const board = await boardService.getBoardById(boardId);
+
+      const currentOwner = await boardService.getBoardOwner(boardId);
+      if (currentOwner.userId !== req.user?.userId) {
+        return new ServiceResponse(
+          ResponseStatus.Failed,
+          'Only the current owner can transfer ownership',
+          null,
+          StatusCodes.FORBIDDEN
+        );
+      }
+
+      const newOwner = await userService.findUserById(newOwnerId); // dùng findUserById
+      if (!newOwner) {
+        return new ServiceResponse(
+          ResponseStatus.Failed,
+          'New owner not found',
+          null,
+          StatusCodes.NOT_FOUND
+        );
+      }
+
+      const updatedBoard = await boardService.transferOwnership(boardId, newOwnerId);
+
+      return new ServiceResponse(
+        ResponseStatus.Success,
+        'Ownership transferred successfully',
+        updatedBoard,
+        StatusCodes.OK
+      );
+    } catch (error: any) {
+      return new ServiceResponse(
+        ResponseStatus.Failed,
+        error.message || 'Error transferring ownership',
+        null,
+        StatusCodes.BAD_REQUEST
+      );
+    }
+  }
+
+  static async updateSettings(req: Request): Promise<ServiceResponse<any>> {
+    try {
+      const { id } = req.params;
+      const {
+        visibility,
+        coverUrl,
+        memberManagePolicy,
+        commentPolicy,
+        workspaceMembersCanEditAndJoin,
+      } = req.body;
+
+
+      const settings: any = {};
+
+      if (visibility !== undefined) {
+        const validVisibilities = ['private', 'workspace', 'public'];
+        if (!validVisibilities.includes(visibility)) {
+          return new ServiceResponse(
+            ResponseStatus.Failed,
+            'Invalid visibility value',
+            null,
+            StatusCodes.BAD_REQUEST
+          );
+        }
+        settings.visibility = visibility;
+      }
+
+      if (coverUrl !== undefined) {
+        if (typeof coverUrl !== 'string' || !coverUrl.trim()) {
+          return new ServiceResponse(
+            ResponseStatus.Failed,
+            'coverUrl must be a non-empty string',
+            null,
+            StatusCodes.BAD_REQUEST
+          );
+        }
+        settings.coverUrl = coverUrl;
+      }
+
+      if (memberManagePolicy !== undefined) {
+        const valid = ['admins_only', 'all_members'];
+        if (!valid.includes(memberManagePolicy)) {
+          return new ServiceResponse(
+            ResponseStatus.Failed,
+            'Invalid memberManagePolicy value',
+            null,
+            StatusCodes.BAD_REQUEST
+          );
+        }
+        settings.memberManagePolicy = memberManagePolicy;
+      }
+
+      if (commentPolicy !== undefined) {
+        const valid = ['disabled', 'members', 'workspace', 'anyone'];
+        if (!valid.includes(commentPolicy)) {
+          return new ServiceResponse(
+            ResponseStatus.Failed,
+            'Invalid commentPolicy value',
+            null,
+            StatusCodes.BAD_REQUEST
+          );
+        }
+        settings.commentPolicy = commentPolicy;
+      }
+
+      if (workspaceMembersCanEditAndJoin !== undefined) {
+        if (typeof workspaceMembersCanEditAndJoin !== 'boolean') {
+          return new ServiceResponse(
+            ResponseStatus.Failed,
+            'workspaceMembersCanEditAndJoin must be boolean',
+            null,
+            StatusCodes.BAD_REQUEST
+          );
+        }
+        settings.workspaceMembersCanEditAndJoin = workspaceMembersCanEditAndJoin;
+      }
+
+      if (Object.keys(settings).length === 0) {
+        return new ServiceResponse(
+          ResponseStatus.Failed,
+          'No settings provided',
+          null,
+          StatusCodes.BAD_REQUEST
+        );
+      }
+
+      const userId = req.user?.userId as string;
+      const isAdmin = await boardService.checkBoardAdmin(id, userId);
+      if (!isAdmin) {
+        return new ServiceResponse(
+          ResponseStatus.Failed,
+          'User is not an admin of this board',
+          null,
+          StatusCodes.FORBIDDEN
+        );
+      }
+
+      const { board, changedFields } = await boardService.updateBoardSettings(
+        id,
+        settings
+      );
+
+      if (changedFields.length === 0) {
+        return new ServiceResponse(
+          ResponseStatus.Success,
+          'No board settings were changed',
+          { board, changedFields },
+          StatusCodes.OK
+        );
+      }
+
+      return new ServiceResponse(
+        ResponseStatus.Success,
+        `Board settings updated: ${changedFields.join(', ')}`,
+        { board, changedFields },
+        StatusCodes.OK
+      );
+    } catch (error: any) {
+      return new ServiceResponse(
+        ResponseStatus.Failed,
+        error.message || 'Error updating board settings',
+        null,
+        StatusCodes.INTERNAL_SERVER_ERROR
+      );
+    }
+  }
+
+  static async updateCover(req: Request): Promise<ServiceResponse<any>> {
+    try {
+      const { id } = req.params;
+      const userId = req.user?.userId as string;
+
+      const isAdmin = await boardService.checkBoardAdmin(id, userId);
+      if (!isAdmin) {
+        return new ServiceResponse(
+          ResponseStatus.Failed,
+          'User is not an admin of this board',
+          null,
+          StatusCodes.FORBIDDEN
+        );
+      }
+
+      const file = req.file as Express.Multer.File | undefined;
+      if (!file) {
+        return new ServiceResponse(
+          ResponseStatus.Failed,
+          'Cover image file is required (field name: cover)',
+          null,
+          StatusCodes.BAD_REQUEST
+        );
+      }
+
+      const coverUrl = await uploadBoardCoverToCloudinary(file);
+
+      const { board, changedFields } = await boardService.updateBoardSettings(
+        id,
+        { coverUrl } 
+      );
+
+      return new ServiceResponse(
+        ResponseStatus.Success,
+        'Board cover updated successfully',
+        { board, changedFields },
+        StatusCodes.OK
+      );
+    } catch (error: any) {
+      return new ServiceResponse(
+        ResponseStatus.Failed,
+        error.message || 'Error updating board cover',
+        null,
+        StatusCodes.INTERNAL_SERVER_ERROR
+      );
+    }
+  }
+
+  
+  static async getMembers(req: Request): Promise<ServiceResponse<any>> { //Hàm ni dùng để lấy ds thành viên trong board
+    try {
+      const boardId = req.params.id;
+      const members = await boardService.getBoardMembers(boardId);
+
+      return new ServiceResponse(
+        ResponseStatus.Success,
+        'Board members retrieved successfully',
+        members,
+        StatusCodes.OK
+      );
+    } catch (error: any) {
+      return new ServiceResponse(
+        ResponseStatus.Failed,
+        error.message || 'Error retrieving board members',
+        null,
+        StatusCodes.INTERNAL_SERVER_ERROR
+      );
+    }
+  }
+
+  static async removeMemberFromBoard(
+    req: Request
+  ): Promise<ServiceResponse<any>> {
+    try {
+      const boardId = req.params.id;
+      const userIdToRemove = req.params.userId;
+      const currentUserId = req.user?.userId as string;
+
+      if (!userIdToRemove) {
+        return new ServiceResponse(
+          ResponseStatus.Failed,
+          'userId is required',
+          null,
+          StatusCodes.BAD_REQUEST
+        );
+      }
+
+      const result = await boardService.removeMemberFromBoard(
+        boardId,
+        userIdToRemove,
+        currentUserId
+      );
+
+      return new ServiceResponse(
+        ResponseStatus.Success,
+        result.message,
+        null,
+        StatusCodes.OK
+      );
+    } catch (error: any) {
+      if (
+        error.message === 'Board not found' ||
+        error.message === 'Member not found in this board'
+      ) {
+        return new ServiceResponse(
+          ResponseStatus.Failed,
+          error.message,
+          null,
+          StatusCodes.NOT_FOUND
+        );
+      }
+
+      if (
+        error.message.includes('You are not a member') ||
+        error.message.includes('Only board owner or admin') ||
+        error.message.includes('Only board members or admins') ||
+        error.message.includes('Cannot remove board owner')
+      ) {
+        return new ServiceResponse(
+          ResponseStatus.Failed,
+          error.message,
+          null,
+          StatusCodes.FORBIDDEN
+        );
+      }
+
+      return new ServiceResponse(
+        ResponseStatus.Failed,
+        error.message || 'Error removing member',
         null,
         StatusCodes.BAD_REQUEST
       );

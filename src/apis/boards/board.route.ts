@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { BoardController } from './board.controller';
+import { BoardTemplateController } from './board-template.controller';
 import {
   handleServiceResponse,
   validateHandle,
@@ -10,9 +11,11 @@ import {
   requireBoardPermissions,
   requireWorkspaceRoles,
 } from '@/common/middleware/authorization';
+import { boardCoverUpload } from '@/config/multer';
 import { PERMISSIONS } from '@/common/constants/permissions';
 import { addMemberToBoardSchema } from './board.schema';
 import { ROLES } from '@/common/constants';
+import authenticateJWT from '@/common/middleware/authentication';
 import { ListController } from '../lists/list.controller';
 import { CreateListSchema } from '../lists/list.schema';
 const route = Router();
@@ -63,12 +66,11 @@ const route = Router();
  */
 route.post(
   '/',
-  authenticateJWT,
-  requireWorkspaceRoles(
-    [ROLES.WORKSPACE_ADMIN, ROLES.WORKSPACE_MEMBER, ROLES.WORKSPACE_MODERATOR],
-    'workspaceId',
-    'body'
-  ),
+  requireWorkspaceRoles([
+    ROLES.WORKSPACE_ADMIN,
+    ROLES.WORKSPACE_MEMBER,
+    ROLES.WORKSPACE_MODERATOR,
+  ]),
   async (req, res) => {
     const serviceResponse = await BoardController.create(req);
     return handleServiceResponse(serviceResponse, res);
@@ -100,8 +102,171 @@ route.post(
  *       401:
  *         description: Unauthorized
  */
-route.get('/', authenticateJWT, async (req, res) => {
-  const serviceResponse = await BoardController.findAll(req);
+route.get(
+  '/',
+  authenticateJWT,
+  requireBoardPermissions(PERMISSIONS.BOARDS_READ),
+  async (req, res) => {
+    const serviceResponse = await BoardController.findAll(req);
+    return handleServiceResponse(serviceResponse, res);
+  }
+);
+
+/**
+ * @swagger
+ * /boards/templates:
+ *   get:
+ *     tags:
+ *       - Board Templates
+ *     summary: Get board templates
+ *     description: Lấy danh sách template (có thể filter theo workspaceId).
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: workspaceId
+ *         required: false
+ *         description: Filter templates theo workspace (kèm global - workspaceId = null)
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: List of templates
+ */
+route.get('/templates', authenticateJWT, async (req, res) => {
+  const serviceResponse = await BoardTemplateController.list(req);
+  return handleServiceResponse(serviceResponse, res);
+});
+
+/**
+ * @swagger
+ * /boards/{id}/template:
+ *   post:
+ *     tags:
+ *       - Board Templates
+ *     summary: Create a board template from an existing board
+ *     description: Only board owner/admin (boards:manage) có thể tạo template.
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         description: Board ID
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: false
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               name:
+ *                 type: string
+ *                 example: "Sprint board template"
+ *               description:
+ *                 type: string
+ *                 example: "Template dùng cho sprint planning"
+ *               coverUrl:
+ *                 type: string
+ *                 example: "https://example.com/template-cover.png"
+ *               workspaceId:
+ *                 type: string
+ *                 description: "Optional: workspace scope cho template"
+ *     responses:
+ *       201:
+ *         description: Board template created successfully
+ *       400:
+ *         description: Invalid input or board not found
+ *       403:
+ *         description: Forbidden (insufficient permissions on board)
+ */
+route.post(
+  '/:id/template',
+  authenticateJWT,
+  requireBoardPermissions(PERMISSIONS.BOARDS_MANAGE),
+  async (req, res) => {
+    const serviceResponse = await BoardTemplateController.createFromBoard(req);
+    return handleServiceResponse(serviceResponse, res);
+  }
+);
+
+/**
+ * @swagger
+ * /boards/templates/{templateId}:
+ *   get:
+ *     tags:
+ *       - Board Templates
+ *     summary: Get a board template by ID
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: templateId
+ *         required: true
+ *         description: Template ID
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Template retrieved successfully
+ *       404:
+ *         description: Template not found
+ */
+route.get('/templates/:templateId', authenticateJWT, async (req, res) => {
+  const serviceResponse = await BoardTemplateController.getOne(req);
+  return handleServiceResponse(serviceResponse, res);
+});
+
+/**
+ * @swagger
+ * /boards/templates/{templateId}/use:
+ *   post:
+ *     tags:
+ *       - Board Templates
+ *     summary: Create a new board from a template
+ *     description: Yêu cầu quyền boards:create trong workspace target.
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: templateId
+ *         required: true
+ *         description: Board Template ID
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - workspaceId
+ *             properties:
+ *               workspaceId:
+ *                 type: string
+ *                 description: Workspace tạo board mới
+ *               title:
+ *                 type: string
+ *                 description: Title override (nếu không truyền dùng name của template)
+ *                 example: "Sprint 12 - Team A"
+ *               description:
+ *                 type: string
+ *                 description: Description override
+ *     responses:
+ *       201:
+ *         description: Board created from template successfully
+ *       400:
+ *         description: Invalid input
+ *       403:
+ *         description: Missing boards:create permission
+ *       404:
+ *         description: Template or workspace not found
+ */
+route.post('/templates/:templateId/use', authenticateJWT, async (req, res) => {
+  const serviceResponse = await BoardTemplateController.apply(req);
   return handleServiceResponse(serviceResponse, res);
 });
 
@@ -182,8 +347,7 @@ route.get('/:id', authenticateJWT, checkBoardAccess('id'), async (req, res) => {
  */
 route.put(
   '/:id',
-  authenticateJWT,
-  checkBoardAccess('id'),
+  checkBoardAccess(),
   requireBoardPermissions(PERMISSIONS.BOARDS_UPDATE),
   async (req, res) => {
     const serviceResponse = await BoardController.update(req);
@@ -377,8 +541,8 @@ route.post(
   '/:id/invite',
   authenticateJWT,
   validateHandle(addMemberToBoardSchema),
-  checkBoardAccess('id'),
-  requireBoardPermissions(PERMISSIONS.MEMBERS_INVITE),
+  checkBoardAccess(),
+  // requireBoardPermissions(PERMISSIONS.MEMBERS_INVITE), //memberManagePolicy sẽ kiểm tra
   async (req, res) => {
     const serviceResponse = await BoardController.addMemberToBoard(req);
     return handleServiceResponse(serviceResponse, res);
@@ -631,3 +795,239 @@ route.post(
   }
 );
 export default route;
+
+/**
+ * @swagger
+ * /boards/{id}/transfer-ownership:
+ *   patch:
+ *     tags:
+ *       - Boards
+ *     summary: Transfer board ownership
+ *     description: Transfer ownership of the board to another user
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         description: Board ID
+ *         schema:
+ *           type: string
+ *       - in: body
+ *         name: newOwnerId
+ *         required: true
+ *         description: New user ID who will become the board owner
+ *         schema:
+ *           type: object
+ *           properties:
+ *             newOwnerId:
+ *               type: string
+ *               example: "507f1f77bcf86cd799439011"
+ *     responses:
+ *       200:
+ *         description: Ownership transferred successfully
+ *       400:
+ *         description: Invalid input
+ *       401:
+ *         description: Unauthorized
+ *       404:
+ *         description: Board or user not found
+ */
+route.patch('/:id/transfer-ownership', authenticateJWT, async (req, res) => {
+  const serviceResponse = await BoardController.transferOwnership(req);
+  return handleServiceResponse(serviceResponse, res);
+});
+
+/**
+ * @swagger
+ * /boards/{id}/settings:
+ *   patch:
+ *     tags:
+ *       - Boards
+ *     summary: Update board settings
+ *     description: Update visibility, background, and permission policies of the board
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         description: Board ID
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               visibility:
+ *                 type: string
+ *                 enum: [private, workspace, public]
+ *                 example: workspace
+ *               backgroundUrl:
+ *                 type: string
+ *                 example: "https://images.example.com/bg-1.png"
+ *               workspaceMembersCanEditAndJoin:
+ *                 type: boolean
+ *                 example: true
+ *               memberManagePolicy:
+ *                 type: string
+ *                 enum: [admins_only, all_members]
+ *                 example: admins_only
+ *               commentPolicy:
+ *                 type: string
+ *                 enum: [disabled, members, workspace, anyone]
+ *                 example: members
+ *     responses:
+ *       200:
+ *         description: Board settings updated successfully
+ *       403:
+ *         description: User is not a board admin or missing boards:update permission
+ *       400:
+ *         description: Invalid settings payload
+ *       500:
+ *         description: Server Error
+ */
+route.patch(
+  '/:id/settings',
+  authenticateJWT,
+  requireBoardPermissions(PERMISSIONS.BOARDS_UPDATE),
+  async (req, res) => {
+    const serviceResponse = await BoardController.updateSettings(req);
+    return handleServiceResponse(serviceResponse, res);
+  }
+);
+
+/**
+ * @swagger
+ * /boards/{id}/settings/cover:
+ *   patch:
+ *     tags:
+ *       - Boards
+ *     summary: Update board cover image
+ *     description: Change the cover image for the board (upload image file)
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         description: Board ID
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               cover:
+ *                 type: string
+ *                 format: binary
+ *                 description: Image file (jpg, png, webp)
+ *     responses:
+ *       200:
+ *         description: Board cover updated successfully
+ *       400:
+ *         description: Invalid input
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden
+ *       404:
+ *         description: Board not found
+ *       500:
+ *         description: Internal server error
+ */
+route.patch(
+  '/:id/settings/cover',
+  authenticateJWT,
+  requireBoardPermissions(PERMISSIONS.BOARDS_UPDATE),
+  boardCoverUpload.single('cover'),
+  async (req, res) => {
+    const serviceResponse = await BoardController.updateCover(req);
+    return handleServiceResponse(serviceResponse, res);
+  }
+);
+
+
+/**
+ * @swagger
+ * /boards/{id}/members:
+ *   get:
+ *     tags:
+ *       - Boards
+ *     summary: Get board members
+ *     description: Retrieve all members of the board (id, name, email, roleName)
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         description: Board ID
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Board members retrieved successfully
+ *       404:
+ *         description: Board not found
+ *       500:
+ *         description: Internal server error
+ */
+route.get(
+  '/:id/members',
+  authenticateJWT,
+  async (req, res) => {
+    const serviceResponse = await BoardController.getMembers(req);
+    return handleServiceResponse(serviceResponse, res);
+  }
+);
+
+/**
+ * @swagger
+ * /boards/{id}/members/{userId}:
+ *   delete:
+ *     tags:
+ *       - Boards
+ *     summary: Remove a member from a board
+ *     description: Only allowed users (tuỳ memberManagePolicy) được xoá thành viên
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         description: Board ID
+ *         schema:
+ *           type: string
+ *       - in: path
+ *         name: userId
+ *         required: true
+ *         description: User ID to remove from board
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Member removed successfully
+ *       400:
+ *         description: Invalid input
+ *       403:
+ *         description: Forbidden (no permission to remove)
+ *       404:
+ *         description: Board or member not found
+ */
+route.delete(
+  '/:id/members/:userId',
+  authenticateJWT,
+  async (req, res) => {
+    const serviceResponse = await BoardController.removeMemberFromBoard(req);
+    return handleServiceResponse(serviceResponse, res);
+  }
+);
+
+

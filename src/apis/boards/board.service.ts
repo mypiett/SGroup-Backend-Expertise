@@ -90,7 +90,9 @@ export class BoardService {
         description: true,
         coverUrl: true,
         visibility: true,
-        isClosed: true,
+        isClosed: true,   
+        commentPolicy: true,
+        memberManagePolicy: true,
         createdAt: true,
         updatedAt: true,
         workspace: {
@@ -140,13 +142,21 @@ export class BoardService {
 
     if (!board) throw new Error('Board not found');
     if (!currentMember) throw new Error('You are not a member of this board');
-    if (
-      currentMember.role.name !== ROLES.BOARD_OWNER &&
-      currentMember.role.name !== ROLES.BOARD_ADMIN &&
-      currentMember.role.name !== ROLES.BOARD_MEMBER
-    ) {
-      throw new Error('Only board owner or admin or member can add members');
+
+    const currentRoleName = currentMember.role.name as string;
+
+    if (!this.canCurrentUserManageMembers(board, currentRoleName)) {
+      if (board.memberManagePolicy === 'admins_only') {
+        throw new Error(
+          'Only board owner or admin can manage members when memberManagePolicy=admins_only'
+        );
+      }
+      throw new Error(
+        'Only board owner, admin or member can manage members when memberManagePolicy=all_members'
+      );
     }
+
+
     if (existingMember)
       throw new Error('User is already a member of this board');
     if (!role) throw new Error('Role not found');
@@ -282,13 +292,171 @@ export class BoardService {
     };
   }
 
+  private canCurrentUserManageMembers(board: Board, roleName: string): boolean {
+    if (board.memberManagePolicy === 'admins_only') {
+      return (
+        roleName === ROLES.BOARD_OWNER ||
+        roleName === ROLES.BOARD_ADMIN
+      );
+    }
+
+    if (board.memberManagePolicy === 'all_members') {
+      return (
+        roleName === ROLES.BOARD_OWNER ||
+        roleName === ROLES.BOARD_ADMIN ||
+        roleName === ROLES.BOARD_MEMBER
+      );
+    }
+    return (
+      roleName === ROLES.BOARD_OWNER ||
+      roleName === ROLES.BOARD_ADMIN
+    );
+  }
+
+
+  async getBoardOwner(boardId: string) {
+    const ownerRole = await this.roleRepository.findOne({
+      where: { name: ROLES.BOARD_OWNER },
+    });
+    if (!ownerRole) throw new Error('Owner role not found');
+
+    const boardMember = await this.boardMemberRepository.findOne({
+      where: { boardId, roleId: ownerRole.id },
+    });
+    if (!boardMember) throw new Error('Board owner not found');
+    return boardMember;
+  }
+
+  async transferOwnership(boardId: string, newOwnerId: string) {
+    const [ownerRole, adminRole, memberRole] = await Promise.all([
+      this.roleRepository.findOne({
+        where: { name: ROLES.BOARD_OWNER },
+      }),
+      this.roleRepository.findOne({
+        where: { name: ROLES.BOARD_ADMIN },
+      }),
+      this.roleRepository.findOne({
+        where: { name: ROLES.BOARD_MEMBER },
+      }),
+    ]);
+
+    if (!ownerRole) throw new Error('Owner role not found');
+    const currentOwner = await this.boardMemberRepository.findOne({
+      where: { boardId, roleId: ownerRole.id },
+    });
+    if (!currentOwner) throw new Error('Board owner not found');    
+    if (currentOwner.userId === newOwnerId) {
+      return this.boardRepository.findOne({
+        where: { id: boardId },
+        relations: ['boardMembers'],
+      });
+    }
+
+    const demotionRoleId = adminRole?.id ?? memberRole?.id;
+    if (!demotionRoleId) {
+      throw new Error('No role available to demote current owner');
+    }
+    const existingNewOwner = await this.boardMemberRepository.findOne({
+      where: { boardId, userId: newOwnerId },
+    });
+    if (existingNewOwner) {
+      existingNewOwner.roleId = ownerRole.id;
+      await this.boardMemberRepository.save(existingNewOwner);
+
+      currentOwner.roleId = demotionRoleId;
+      await this.boardMemberRepository.save(currentOwner);
+    } else {
+      const previousOwnerId = currentOwner.userId;
+      currentOwner.userId = newOwnerId;
+      await this.boardMemberRepository.save(currentOwner);
+
+      const demotedMember = this.boardMemberRepository.create({
+        boardId,
+        userId: previousOwnerId,
+        roleId: demotionRoleId,
+      });
+      await this.boardMemberRepository.save(demotedMember);
+    }
+    return await this.boardRepository.findOne({
+      where: { id: boardId },
+      relations: ['boardMembers'],
+    });
+  }
+
+  async checkBoardAdmin(boardId: string, userId: string) {
+    const boardMember = await this.boardMemberRepository.findOne({
+      where: { boardId, userId },
+      relations: ['role'],
+    });
+
+    if (!boardMember) return false;
+    const adminRoles = [ROLES.BOARD_OWNER, ROLES.BOARD_ADMIN];
+    return adminRoles.includes(boardMember.role.name as any);
+  }
+
+  async updateBoardSettings(
+    boardId: string,
+    settings: {
+      visibility?: 'private' | 'workspace' | 'public';
+      coverUrl?: string;
+      memberManagePolicy?: 'admins_only' | 'all_members';
+      commentPolicy?: 'disabled' | 'members' | 'workspace' | 'anyone';
+      workspaceMembersCanEditAndJoin?: boolean;
+    }
+  ): Promise<{ board: Board; changedFields: string[] }> {
+    const board = await this.boardRepository.findOne({ where: { id: boardId } });
+    if (!board) throw new Error('Board not found');
+
+    const changedFields: string[] = [];
+
+    if (settings.visibility !== undefined && settings.visibility !== board.visibility) {
+      board.visibility = settings.visibility;
+      changedFields.push('visibility');
+    }
+
+    if (settings.coverUrl !== undefined && settings.coverUrl !== board.coverUrl) {
+      board.coverUrl = settings.coverUrl;
+      changedFields.push('coverUrl');
+    }
+
+    if (
+      settings.memberManagePolicy !== undefined &&
+      settings.memberManagePolicy !== board.memberManagePolicy
+    ) {
+      board.memberManagePolicy = settings.memberManagePolicy;
+      changedFields.push('memberManagePolicy');
+    }
+
+    if (
+      settings.commentPolicy !== undefined &&
+      settings.commentPolicy !== board.commentPolicy
+    ) {
+      board.commentPolicy = settings.commentPolicy;
+      changedFields.push('commentPolicy');
+    }
+
+    if (
+      settings.workspaceMembersCanEditAndJoin !== undefined &&
+      settings.workspaceMembersCanEditAndJoin !== board.workspaceMembersCanEditAndJoin
+    ) {
+      board.workspaceMembersCanEditAndJoin = settings.workspaceMembersCanEditAndJoin;
+      changedFields.push('workspaceMembersCanEditAndJoin');
+    }
+
+    if (changedFields.length === 0) {
+      return { board, changedFields };
+    }
+
+    const saved = await this.boardRepository.save(board);
+    return { board: saved, changedFields };
+  }
+
+
   async closeBoard(id: string) {
     const board = await this.boardRepository.findOne({
       where: { id },
     });
-
     if (!board) throw new Error('Board not found');
-
     board.isClosed = true;
     return await this.boardRepository.save(board);
   }
@@ -297,9 +465,7 @@ export class BoardService {
     const board = await this.boardRepository.findOne({
       where: { id },
     });
-
     if (!board) throw new Error('Board not found');
-
     board.isClosed = false;
     return await this.boardRepository.save(board);
   }
@@ -308,10 +474,86 @@ export class BoardService {
     const board = await this.boardRepository.findOne({
       where: { id },
     });
+    if (!board) throw new Error('Board not found');
+    await this.boardRepository.remove(board);
+    return { message: 'Board deleted permanently' };
+  }
+
+  async updateBoardCover(boardId: string, coverUrl: string) {
+    const board = await this.boardRepository.findOne({ where: { id: boardId } });
+    if (!board) throw new Error('Board not found');
+    board.coverUrl = coverUrl;
+    return await this.boardRepository.save(board);
+  }
+
+  async getBoardMembers(boardId: string) {
+    const board = await this.boardRepository.findOne({
+      where: { id: boardId },
+    });
 
     if (!board) throw new Error('Board not found');
 
-    await this.boardRepository.remove(board);
-    return { message: 'Board deleted permanently' };
+    const boardMembers = await this.boardMemberRepository.find({
+      where: { boardId },
+      relations: ['user', 'role'],
+    });
+
+    return boardMembers.map((member) => ({
+      id: member.user.id,
+      name: member.user.name,
+      email: member.user.email,
+      roleName: member.role.name,
+    }));
+  }
+
+  async removeMemberFromBoard(
+    boardId: string,
+    userIdToRemove: string,
+    currentUserId: string
+  ) {
+    const board = await this.boardRepository.findOne({ where: { id: boardId } });
+    if (!board) throw new Error('Board not found');
+
+    const currentMember = await this.boardMemberRepository.findOne({
+      where: { boardId, userId: currentUserId },
+      relations: ['role'],
+    });
+
+    if (!currentMember) throw new Error('You are not a member of this board');
+
+    const currentRoleName = currentMember.role.name as string;
+
+    if (!this.canCurrentUserManageMembers(board, currentRoleName)) {
+      if (board.memberManagePolicy === 'admins_only') {
+        throw new Error(
+          'Only board owner or admin can manage members when memberManagePolicy=admins_only'
+        );
+      }
+
+      throw new Error(
+        'Only board owner, admin or member can manage members when memberManagePolicy=all_members'
+      );
+    }
+
+    const targetMember = await this.boardMemberRepository.findOne({
+      where: { boardId, userId: userIdToRemove },
+      relations: ['role'],
+    });
+
+    if (!targetMember) throw new Error('Member not found in this board');
+
+    // Không cho đá owner (trừ khi chính owner tự rời board, tuỳ bạn muốn)
+    if (
+      targetMember.role.name === ROLES.BOARD_OWNER &&
+      targetMember.userId !== currentUserId
+    ) {
+      throw new Error('Cannot remove board owner');
+    }
+
+    await this.boardMemberRepository.delete({ id: targetMember.id });
+
+    return {
+      message: 'Member removed successfully',
+    };
   }
 }

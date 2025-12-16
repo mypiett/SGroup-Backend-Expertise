@@ -6,7 +6,7 @@ import { Role } from '../common/entities/role.entity';
 import { User } from '../common/entities/user.entity';
 
 export class AuthorizationSeeder {
-  constructor(private dataSource: DataSource) {}
+  constructor(private dataSource: DataSource) { }
 
   async seedRolesAndPermissions(): Promise<void> {
     const roleRepository = this.dataSource.getRepository(Role);

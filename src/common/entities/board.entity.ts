@@ -1,3 +1,4 @@
+//src/common/entities/board.entity.ts
 import {
   Column,
   Entity,
@@ -49,10 +50,29 @@ export class Board extends DateTimeEntity {
   })
   public visibility: string;
 
+  //cho phép member workspace join/edit board
+  @Column({ type: 'bool', default: false })
+  public workspaceMembersCanEditAndJoin: boolean;
+
+  @Column({
+    type: 'enum',
+    enum: ['admins_only', 'all_members'],
+    default: 'admins_only',
+  })
+  public memberManagePolicy: 'admins_only' | 'all_members';
+
+  @Column({
+    type: 'enum',
+    enum: ['disabled', 'members', 'workspace', 'anyone'],
+    default: 'members',
+  })
+  public commentPolicy: 'disabled' | 'members' | 'workspace' | 'anyone';
+
   // workspace
   @ManyToOne(() => Workspace, (workspace) => workspace.id, {
     onDelete: 'CASCADE',
   })
+  
   @JoinColumn({ name: 'workspaceId' })
   public workspace: Workspace;
 
