@@ -1,3 +1,4 @@
+//src/common/entities/board.entity.ts
 import {
   Column,
   Entity,

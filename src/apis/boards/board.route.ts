@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { BoardController } from './board.controller';
+import { BoardTemplateController } from './board-template.controller';
 import {
   handleServiceResponse,
   validateHandle,
@@ -10,6 +11,7 @@ import {
   requireBoardPermissions,
   requireWorkspaceRoles,
 } from '@/common/middleware/authorization';
+import { boardCoverUpload } from '@/config/multer';
 import { PERMISSIONS } from '@/common/constants/permissions';
 import { addMemberToBoardSchema } from './board.schema';
 import { ROLES } from '@/common/constants';
@@ -109,6 +111,164 @@ route.get(
     return handleServiceResponse(serviceResponse, res);
   }
 );
+
+/**
+ * @swagger
+ * /boards/templates:
+ *   get:
+ *     tags:
+ *       - Board Templates
+ *     summary: Get board templates
+ *     description: Lấy danh sách template (có thể filter theo workspaceId).
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: workspaceId
+ *         required: false
+ *         description: Filter templates theo workspace (kèm global - workspaceId = null)
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: List of templates
+ */
+route.get('/templates', authenticateJWT, async (req, res) => {
+  const serviceResponse = await BoardTemplateController.list(req);
+  return handleServiceResponse(serviceResponse, res);
+});
+
+/**
+ * @swagger
+ * /boards/{id}/template:
+ *   post:
+ *     tags:
+ *       - Board Templates
+ *     summary: Create a board template from an existing board
+ *     description: Only board owner/admin (boards:manage) có thể tạo template.
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         description: Board ID
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: false
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               name:
+ *                 type: string
+ *                 example: "Sprint board template"
+ *               description:
+ *                 type: string
+ *                 example: "Template dùng cho sprint planning"
+ *               coverUrl:
+ *                 type: string
+ *                 example: "https://example.com/template-cover.png"
+ *               workspaceId:
+ *                 type: string
+ *                 description: "Optional: workspace scope cho template"
+ *     responses:
+ *       201:
+ *         description: Board template created successfully
+ *       400:
+ *         description: Invalid input or board not found
+ *       403:
+ *         description: Forbidden (insufficient permissions on board)
+ */
+route.post(
+  '/:id/template',
+  authenticateJWT,
+  requireBoardPermissions(PERMISSIONS.BOARDS_MANAGE),
+  async (req, res) => {
+    const serviceResponse = await BoardTemplateController.createFromBoard(req);
+    return handleServiceResponse(serviceResponse, res);
+  }
+);
+
+/**
+ * @swagger
+ * /boards/templates/{templateId}:
+ *   get:
+ *     tags:
+ *       - Board Templates
+ *     summary: Get a board template by ID
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: templateId
+ *         required: true
+ *         description: Template ID
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Template retrieved successfully
+ *       404:
+ *         description: Template not found
+ */
+route.get('/templates/:templateId', authenticateJWT, async (req, res) => {
+  const serviceResponse = await BoardTemplateController.getOne(req);
+  return handleServiceResponse(serviceResponse, res);
+});
+
+/**
+ * @swagger
+ * /boards/templates/{templateId}/use:
+ *   post:
+ *     tags:
+ *       - Board Templates
+ *     summary: Create a new board from a template
+ *     description: Yêu cầu quyền boards:create trong workspace target.
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: templateId
+ *         required: true
+ *         description: Board Template ID
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - workspaceId
+ *             properties:
+ *               workspaceId:
+ *                 type: string
+ *                 description: Workspace tạo board mới
+ *               title:
+ *                 type: string
+ *                 description: Title override (nếu không truyền dùng name của template)
+ *                 example: "Sprint 12 - Team A"
+ *               description:
+ *                 type: string
+ *                 description: Description override
+ *     responses:
+ *       201:
+ *         description: Board created from template successfully
+ *       400:
+ *         description: Invalid input
+ *       403:
+ *         description: Missing boards:create permission
+ *       404:
+ *         description: Template or workspace not found
+ */
+route.post('/templates/:templateId/use', authenticateJWT, async (req, res) => {
+  const serviceResponse = await BoardTemplateController.apply(req);
+  return handleServiceResponse(serviceResponse, res);
+});
 
 /**
  * @swagger
@@ -382,7 +542,7 @@ route.post(
   authenticateJWT,
   validateHandle(addMemberToBoardSchema),
   checkBoardAccess(),
-  requireBoardPermissions(PERMISSIONS.MEMBERS_INVITE),
+  // requireBoardPermissions(PERMISSIONS.MEMBERS_INVITE), //memberManagePolicy sẽ kiểm tra
   async (req, res) => {
     const serviceResponse = await BoardController.addMemberToBoard(req);
     return handleServiceResponse(serviceResponse, res);
@@ -747,7 +907,7 @@ route.patch(
  *     tags:
  *       - Boards
  *     summary: Update board cover image
- *     description: Change the cover image for the board
+ *     description: Change the cover image for the board (upload image file)
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -757,17 +917,17 @@ route.patch(
  *         description: Board ID
  *         schema:
  *           type: string
- *         example: "a3b9e74d-1234-5678-9abc-def012345678"
- *       - in: body
- *         name: coverUrl
- *         required: true
- *         description: New cover URL for the board
- *         schema:
- *           type: object
- *           properties:
- *             coverUrl:
- *               type: string
- *               example: "https://example.com/new-cover.jpg"
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               cover:
+ *                 type: string
+ *                 format: binary
+ *                 description: Image file (jpg, png, webp)
  *     responses:
  *       200:
  *         description: Board cover updated successfully
@@ -775,6 +935,8 @@ route.patch(
  *         description: Invalid input
  *       401:
  *         description: Unauthorized
+ *       403:
+ *         description: Forbidden
  *       404:
  *         description: Board not found
  *       500:
@@ -783,12 +945,14 @@ route.patch(
 route.patch(
   '/:id/settings/cover',
   authenticateJWT,
-  requireBoardPermissions(PERMISSIONS.BOARDS_UPDATE), // Kiểm tra quyền admin board
+  requireBoardPermissions(PERMISSIONS.BOARDS_UPDATE),
+  boardCoverUpload.single('cover'),
   async (req, res) => {
     const serviceResponse = await BoardController.updateCover(req);
     return handleServiceResponse(serviceResponse, res);
   }
 );
+
 
 /**
  * @swagger
@@ -860,9 +1024,10 @@ route.get(
 route.delete(
   '/:id/members/:userId',
   authenticateJWT,
-  requireBoardPermissions(PERMISSIONS.MEMBERS_REMOVE),
   async (req, res) => {
     const serviceResponse = await BoardController.removeMemberFromBoard(req);
     return handleServiceResponse(serviceResponse, res);
   }
 );
+
+

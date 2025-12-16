@@ -5,6 +5,7 @@ import {
   ResponseStatus,
 } from '@/common/models/serviceResponse';
 import { StatusCodes } from 'http-status-codes';
+import { uploadBoardCoverToCloudinary } from '@/config/cloudinary';
 
 const boardService = new BoardService();
 import { UserService } from '../users/user.service'; // chỉnh đường dẫn cho đúng
@@ -302,10 +303,8 @@ export class BoardController {
       const boardId = req.params.id;
       const { newOwnerId } = req.body;
 
-      // Kiểm tra board có tồn tại không
       const board = await boardService.getBoardById(boardId);
 
-      // Kiểm tra người yêu cầu có phải là BOARD_OWNER không
       const currentOwner = await boardService.getBoardOwner(boardId);
       if (currentOwner.userId !== req.user?.userId) {
         return new ServiceResponse(
@@ -316,7 +315,6 @@ export class BoardController {
         );
       }
 
-      // Kiểm tra xem user mới có tồn tại không
       const newOwner = await userService.findUserById(newOwnerId); // dùng findUserById
       if (!newOwner) {
         return new ServiceResponse(
@@ -327,7 +325,6 @@ export class BoardController {
         );
       }
 
-      // Chuyển quyền sở hữu
       const updatedBoard = await boardService.transferOwnership(boardId, newOwnerId);
 
       return new ServiceResponse(
@@ -351,11 +348,12 @@ export class BoardController {
       const { id } = req.params;
       const {
         visibility,
-        backgroundUrl,
+        coverUrl,
         memberManagePolicy,
         commentPolicy,
         workspaceMembersCanEditAndJoin,
       } = req.body;
+
 
       const settings: any = {};
 
@@ -372,16 +370,16 @@ export class BoardController {
         settings.visibility = visibility;
       }
 
-      if (backgroundUrl !== undefined) {
-        if (typeof backgroundUrl !== 'string' || !backgroundUrl.trim()) {
+      if (coverUrl !== undefined) {
+        if (typeof coverUrl !== 'string' || !coverUrl.trim()) {
           return new ServiceResponse(
             ResponseStatus.Failed,
-            'backgroundUrl must be a non-empty string',
+            'coverUrl must be a non-empty string',
             null,
             StatusCodes.BAD_REQUEST
           );
         }
-        settings.backgroundUrl = backgroundUrl;
+        settings.coverUrl = coverUrl;
       }
 
       if (memberManagePolicy !== undefined) {
@@ -419,8 +417,7 @@ export class BoardController {
             StatusCodes.BAD_REQUEST
           );
         }
-        settings.workspaceMembersCanEditAndJoin =
-          workspaceMembersCanEditAndJoin;
+        settings.workspaceMembersCanEditAndJoin = workspaceMembersCanEditAndJoin;
       }
 
       if (Object.keys(settings).length === 0) {
@@ -443,12 +440,24 @@ export class BoardController {
         );
       }
 
-      const updatedBoard = await boardService.updateBoardSettings(id, settings);
+      const { board, changedFields } = await boardService.updateBoardSettings(
+        id,
+        settings
+      );
+
+      if (changedFields.length === 0) {
+        return new ServiceResponse(
+          ResponseStatus.Success,
+          'No board settings were changed',
+          { board, changedFields },
+          StatusCodes.OK
+        );
+      }
 
       return new ServiceResponse(
         ResponseStatus.Success,
-        'Board settings updated successfully',
-        updatedBoard,
+        `Board settings updated: ${changedFields.join(', ')}`,
+        { board, changedFields },
         StatusCodes.OK
       );
     } catch (error: any) {
@@ -459,28 +468,44 @@ export class BoardController {
         StatusCodes.INTERNAL_SERVER_ERROR
       );
     }
-  }  
+  }
 
   static async updateCover(req: Request): Promise<ServiceResponse<any>> {
     try {
-      const { coverUrl } = req.body;
-      const boardId = req.params.id;
+      const { id } = req.params;
+      const userId = req.user?.userId as string;
 
-      if (!coverUrl) {
+      const isAdmin = await boardService.checkBoardAdmin(id, userId);
+      if (!isAdmin) {
         return new ServiceResponse(
           ResponseStatus.Failed,
-          'coverUrl is required',
+          'User is not an admin of this board',
+          null,
+          StatusCodes.FORBIDDEN
+        );
+      }
+
+      const file = req.file as Express.Multer.File | undefined;
+      if (!file) {
+        return new ServiceResponse(
+          ResponseStatus.Failed,
+          'Cover image file is required (field name: cover)',
           null,
           StatusCodes.BAD_REQUEST
         );
       }
 
-      const updatedBoard = await boardService.updateBoardCover(boardId, coverUrl);
+      const coverUrl = await uploadBoardCoverToCloudinary(file);
+
+      const { board, changedFields } = await boardService.updateBoardSettings(
+        id,
+        { coverUrl } 
+      );
 
       return new ServiceResponse(
         ResponseStatus.Success,
         'Board cover updated successfully',
-        updatedBoard,
+        { board, changedFields },
         StatusCodes.OK
       );
     } catch (error: any) {
@@ -493,6 +518,7 @@ export class BoardController {
     }
   }
 
+  
   static async getMembers(req: Request): Promise<ServiceResponse<any>> { //Hàm ni dùng để lấy ds thành viên trong board
     try {
       const boardId = req.params.id;
