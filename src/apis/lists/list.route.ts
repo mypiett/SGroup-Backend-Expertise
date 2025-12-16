@@ -15,7 +15,6 @@ import {
 import { requireBoardMember } from '@/common/middleware/requireBoardMember.middleware';
 import {
   PERMISSIONS,
-  requireBoardPermissions,
   requireListPermissions,
 } from '@/common/middleware/authorization';
 import authenticateJWT from '@/common/middleware/authentication';
