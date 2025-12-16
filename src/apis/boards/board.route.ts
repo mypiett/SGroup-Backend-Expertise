@@ -66,11 +66,11 @@ const route = Router();
  */
 route.post(
   '/',
-  requireWorkspaceRoles([
-    ROLES.WORKSPACE_ADMIN,
-    ROLES.WORKSPACE_MEMBER,
-    ROLES.WORKSPACE_MODERATOR,
-  ]),
+  requireWorkspaceRoles(
+    [ROLES.WORKSPACE_ADMIN, ROLES.WORKSPACE_MEMBER, ROLES.WORKSPACE_MODERATOR],
+    'workspaceId',
+    'body'
+  ),
   async (req, res) => {
     const serviceResponse = await BoardController.create(req);
     return handleServiceResponse(serviceResponse, res);
@@ -295,7 +295,7 @@ route.post('/templates/:templateId/use', authenticateJWT, async (req, res) => {
  *       403:
  *         description: Forbidden (access denied based on visibility)
  */
-route.get('/:id', authenticateJWT, checkBoardAccess('id'), async (req, res) => {
+route.get('/:id', checkBoardAccess('id'), async (req, res) => {
   const serviceResponse = await BoardController.findOne(req);
   return handleServiceResponse(serviceResponse, res);
 });
@@ -347,7 +347,6 @@ route.get('/:id', authenticateJWT, checkBoardAccess('id'), async (req, res) => {
  */
 route.put(
   '/:id',
-  checkBoardAccess(),
   requireBoardPermissions(PERMISSIONS.BOARDS_UPDATE),
   async (req, res) => {
     const serviceResponse = await BoardController.update(req);
@@ -382,7 +381,6 @@ route.put(
  */
 route.patch(
   '/:id/archive',
-  authenticateJWT,
   requireBoardPermissions(PERMISSIONS.BOARDS_DELETE),
   async (req, res) => {
     const serviceResponse = await BoardController.closeBoard(req);
@@ -417,7 +415,6 @@ route.patch(
  */
 route.patch(
   '/:id/reopen',
-  authenticateJWT,
   requireBoardPermissions(PERMISSIONS.BOARDS_UPDATE),
   async (req, res) => {
     const serviceResponse = await BoardController.reopenBoard(req);
@@ -452,7 +449,6 @@ route.patch(
  */
 route.delete(
   '/:id',
-  authenticateJWT,
   requireBoardPermissions(PERMISSIONS.BOARDS_DELETE),
   async (req, res) => {
     const serviceResponse = await BoardController.deleteBoardPermanently(req);
@@ -539,10 +535,8 @@ route.delete(
  */
 route.post(
   '/:id/invite',
-  authenticateJWT,
   validateHandle(addMemberToBoardSchema),
-  checkBoardAccess(),
-  // requireBoardPermissions(PERMISSIONS.MEMBERS_INVITE), //memberManagePolicy sẽ kiểm tra
+  requireBoardPermissions(PERMISSIONS.MEMBERS_INVITE),
   async (req, res) => {
     const serviceResponse = await BoardController.addMemberToBoard(req);
     return handleServiceResponse(serviceResponse, res);
@@ -586,7 +580,6 @@ route.post(
  */
 route.post(
   '/:id/generate-link',
-  authenticateJWT,
   requireBoardPermissions(PERMISSIONS.MEMBERS_INVITE),
   async (req, res) => {
     const serviceResponse = await BoardController.createLinkShareBoard(req);
@@ -628,7 +621,6 @@ route.post(
  */
 route.delete(
   '/:id/invite-link',
-  authenticateJWT,
   requireBoardPermissions(PERMISSIONS.MEMBERS_MANAGE),
   async (req, res) => {
     const serviceResponse = await BoardController.deleteLinkShareBoard(req);
@@ -695,7 +687,7 @@ route.delete(
  *       401:
  *         description: Unauthorized (user not logged in)
  */
-route.post('/:id/invite/:inviteToken', authenticateJWT, async (req, res) => {
+route.post('/:id/invite/:inviteToken', async (req, res) => {
   const serviceResponse = await BoardController.JoinBoardByLink(req);
   return handleServiceResponse(serviceResponse, res);
 });
@@ -953,7 +945,6 @@ route.patch(
   }
 );
 
-
 /**
  * @swagger
  * /boards/{id}/members:
@@ -979,14 +970,10 @@ route.patch(
  *       500:
  *         description: Internal server error
  */
-route.get(
-  '/:id/members',
-  authenticateJWT,
-  async (req, res) => {
-    const serviceResponse = await BoardController.getMembers(req);
-    return handleServiceResponse(serviceResponse, res);
-  }
-);
+route.get('/:id/members', authenticateJWT, async (req, res) => {
+  const serviceResponse = await BoardController.getMembers(req);
+  return handleServiceResponse(serviceResponse, res);
+});
 
 /**
  * @swagger
@@ -1021,13 +1008,7 @@ route.get(
  *       404:
  *         description: Board or member not found
  */
-route.delete(
-  '/:id/members/:userId',
-  authenticateJWT,
-  async (req, res) => {
-    const serviceResponse = await BoardController.removeMemberFromBoard(req);
-    return handleServiceResponse(serviceResponse, res);
-  }
-);
-
-
+route.delete('/:id/members/:userId', authenticateJWT, async (req, res) => {
+  const serviceResponse = await BoardController.removeMemberFromBoard(req);
+  return handleServiceResponse(serviceResponse, res);
+});
