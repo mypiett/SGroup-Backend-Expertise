@@ -33,4 +33,29 @@ export const uploadAvatarToCloudinary = (
     });
 };
 
+export const uploadBoardCoverToCloudinary = (
+    file: Express.Multer.File
+): Promise<string> => {
+    return new Promise((resolve, reject) => {
+        if (!file || !file.buffer) {
+            return reject(new Error('No file buffer'));
+        }
+
+        const uploadStream = cloudinary.uploader.upload_stream(
+            {
+                folder: 'trello-assk/board-covers',
+                resource_type: 'image',
+            },
+            (error, result) => {
+                if (error || !result) {
+                    return reject(error || new Error('Upload failed'));
+                }
+                resolve(result.secure_url);
+            }
+        );
+        uploadStream.end(file.buffer);
+    });
+};
+
+
 export default cloudinary;

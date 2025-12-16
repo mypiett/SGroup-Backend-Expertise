@@ -6,8 +6,12 @@ function fileFilter(
     file: Express.Multer.File,
     cb: FileFilterCallback
 ) {
-    if (!file.mimetype.startsWith('image/')) {
-        return cb(new Error('Only image files are allowed') as any, false);
+    const allowedMimes = ['image/jpeg', 'image/png', 'image/webp'];
+    if (!allowedMimes.includes(file.mimetype)) {
+        return cb(
+            new Error('Only JPG, PNG or WEBP image files are allowed') as any,
+            false
+        );
     }
     cb(null, true);
 }
@@ -18,6 +22,15 @@ export const avatarUpload = multer({
     storage,
     fileFilter,
     limits: {
-        fileSize: 5 * 1024 * 1024, // 5MB 
+        fileSize: 5 * 1024 * 1024, // 5MB
     },
 });
+
+export const boardCoverUpload = multer({
+    storage,
+    fileFilter,
+    limits: {
+        fileSize: 5 * 1024 * 1024, // 5MB
+    },
+});
+
