@@ -49,3 +49,22 @@ export const CopyListSchema = z.object({
     position: z.number().int().min(0).optional(),
   }),
 });
+
+export const EditListName = z.object({
+  params: z.object({
+    id: z.uuid(),
+  }),
+  body: z.object({
+    title: z.string().min(1).max(255),
+  }),
+});
+
+export const ReorderList = z.object({
+  params: z.object({
+    id: z.uuid(),
+  }),
+  body: z.object({
+    prevListId: z.uuid(),
+    nextListId: z.uuid(),
+  }),
+});
