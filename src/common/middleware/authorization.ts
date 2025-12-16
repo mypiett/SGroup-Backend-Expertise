@@ -123,7 +123,7 @@ export function authorize(options: AuthorizationOptions) {
   };
 }
 
-export function canAccessWorkspace(
+export function checkWorkspaceAccess(
   idField: string = 'workspaceId',
   idSource: 'params' | 'body' | 'query' = 'params'
 ) {
@@ -134,7 +134,7 @@ export function canAccessWorkspace(
   });
 }
 
-export function canAccessBoard(
+export function checkBoardAccess(
   idField: string = 'boardId',
   idSource: 'params' | 'body' | 'query' = 'params',
   allowPublic: boolean = false
@@ -173,7 +173,7 @@ export function requireBoardPermission(
   });
 }
 
-export function requireWorkspaceRole(
+export function requireWorkspaceRoles(
   allowedRoles: Role[],
   idField: string = 'workspaceId',
   idSource: 'params' | 'body' | 'query' = 'params'
@@ -343,12 +343,12 @@ export const boardOwner = requireBoardRole([
   ROLES.WORKSPACE_ADMIN,
 ]);
 
-export const workspaceAdmin = requireWorkspaceRole(
+export const workspaceAdmin = requireWorkspaceRoles(
   [ROLES.WORKSPACE_ADMIN, ROLES.ADMIN],
   'id'
 );
 
-export const workspaceMember = requireWorkspaceRole(
+export const workspaceMember = requireWorkspaceRoles(
   [
     ROLES.WORKSPACE_ADMIN,
     ROLES.WORKSPACE_MODERATOR,
@@ -517,8 +517,186 @@ export function requireBoardPermissions(
   };
 }
 
-export const checkBoardAccess = canAccessBoard;
+export function requireListPermissions(
+  permissions: Permission | Permission[],
+  listIdField: string = 'id',
+  idSource: 'params' | 'body' | 'query' = 'params'
+) {
+  const permissionArray = Array.isArray(permissions)
+    ? permissions
+    : [permissions];
 
-export const requireWorkspaceRoles = requireWorkspaceRole;
+  return async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const userId = req.user?.userId;
+      if (!userId) {
+        return res.status(401).json({
+          success: false,
+          message: 'Authentication required',
+        });
+      }
+
+      // Lấy listId
+      let listId: string | null = null;
+      switch (idSource) {
+        case 'params':
+          listId = req.params[listIdField];
+          break;
+        case 'body':
+          listId = req.body[listIdField];
+          break;
+        case 'query':
+          listId = req.query[listIdField] as string;
+          break;
+      }
+
+      if (!listId) {
+        return res.status(400).json({
+          success: false,
+          message: `${listIdField} is required`,
+        });
+      }
+
+      // Resolve boardId từ listId
+      const boardId = await rbacProvider.getBoardIdFromList(listId);
+      if (!boardId) {
+        return res.status(404).json({
+          success: false,
+          message: 'List not found',
+        });
+      }
+
+      for (const permission of permissionArray) {
+        const hasPermission = await rbacProvider.hasBoardPermission(
+          userId,
+          boardId,
+          permission
+        );
+        if (!hasPermission) {
+          return res.status(403).json({
+            success: false,
+            message: 'Insufficient permissions',
+          });
+        }
+      }
+
+      const effectiveRole = await rbacProvider.getEffectiveBoardRole(
+        userId,
+        boardId
+      );
+      const boardMembership = await rbacProvider.getBoardMembership(
+        userId,
+        boardId
+      );
+
+      req.userContext = {
+        userId,
+        boardRole: boardMembership?.role || effectiveRole || undefined,
+        isWorkspaceMember: effectiveRole !== boardMembership?.role,
+        isBoardMember: !!boardMembership,
+      };
+
+      req.resolvedBoardId = boardId;
+
+      next();
+    } catch (error) {
+      console.error('List permission check error:', error);
+      return res.status(500).json({
+        success: false,
+        message: 'Permission check failed',
+      });
+    }
+  };
+}
+
+export function requireCardPermissions(
+  permissions: Permission | Permission[],
+  cardIdField: string = 'id',
+  idSource: 'params' | 'body' | 'query' = 'params'
+) {
+  const permissionArray = Array.isArray(permissions)
+    ? permissions
+    : [permissions];
+
+  return async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const userId = req.user?.userId;
+      if (!userId) {
+        return res.status(401).json({
+          success: false,
+          message: 'Authentication required',
+        });
+      }
+
+      let cardId: string | null = null;
+      switch (idSource) {
+        case 'params':
+          cardId = req.params[cardIdField];
+          break;
+        case 'body':
+          cardId = req.body[cardIdField];
+          break;
+        case 'query':
+          cardId = req.query[cardIdField] as string;
+          break;
+      }
+
+      if (!cardId) {
+        return res.status(400).json({
+          success: false,
+          message: `${cardIdField} is required`,
+        });
+      }
+
+      const boardId = await rbacProvider.getBoardIdFromCard(cardId);
+      if (!boardId) {
+        return res.status(404).json({
+          success: false,
+          message: 'Card not found',
+        });
+      }
+
+      for (const permission of permissionArray) {
+        const hasPermission = await rbacProvider.hasBoardPermission(
+          userId,
+          boardId,
+          permission
+        );
+        if (!hasPermission) {
+          return res.status(403).json({
+            success: false,
+            message: 'Insufficient permissions',
+          });
+        }
+      }
+
+      const effectiveRole = await rbacProvider.getEffectiveBoardRole(
+        userId,
+        boardId
+      );
+      const boardMembership = await rbacProvider.getBoardMembership(
+        userId,
+        boardId
+      );
+
+      req.userContext = {
+        userId,
+        boardRole: boardMembership?.role || effectiveRole || undefined,
+        isWorkspaceMember: effectiveRole !== boardMembership?.role,
+        isBoardMember: !!boardMembership,
+      };
+
+      req.resolvedBoardId = boardId;
+
+      next();
+    } catch (error) {
+      console.error('Card permission check error:', error);
+      return res.status(500).json({
+        success: false,
+        message: 'Permission check failed',
+      });
+    }
+  };
+}
 
 export { AuthorizationOptions, PERMISSIONS, ROLES };
