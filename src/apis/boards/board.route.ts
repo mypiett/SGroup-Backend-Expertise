@@ -66,11 +66,11 @@ const route = Router();
  */
 route.post(
   '/',
-  requireWorkspaceRoles([
-    ROLES.WORKSPACE_ADMIN,
-    ROLES.WORKSPACE_MEMBER,
-    ROLES.WORKSPACE_MODERATOR,
-  ]),
+  requireWorkspaceRoles(
+    [ROLES.WORKSPACE_ADMIN, ROLES.WORKSPACE_MEMBER, ROLES.WORKSPACE_MODERATOR],
+    'workspaceId',
+    'body'
+  ),
   async (req, res) => {
     const serviceResponse = await BoardController.create(req);
     return handleServiceResponse(serviceResponse, res);
@@ -105,7 +105,7 @@ route.post(
 route.get(
   '/',
   authenticateJWT,
-  requireBoardPermissions(PERMISSIONS.BOARDS_READ),
+  // requireBoardPermissions(PERMISSIONS.BOARDS_READ),
   async (req, res) => {
     const serviceResponse = await BoardController.findAll(req);
     return handleServiceResponse(serviceResponse, res);
@@ -953,7 +953,6 @@ route.patch(
   }
 );
 
-
 /**
  * @swagger
  * /boards/{id}/members:
@@ -979,14 +978,10 @@ route.patch(
  *       500:
  *         description: Internal server error
  */
-route.get(
-  '/:id/members',
-  authenticateJWT,
-  async (req, res) => {
-    const serviceResponse = await BoardController.getMembers(req);
-    return handleServiceResponse(serviceResponse, res);
-  }
-);
+route.get('/:id/members', authenticateJWT, async (req, res) => {
+  const serviceResponse = await BoardController.getMembers(req);
+  return handleServiceResponse(serviceResponse, res);
+});
 
 /**
  * @swagger
@@ -1021,13 +1016,7 @@ route.get(
  *       404:
  *         description: Board or member not found
  */
-route.delete(
-  '/:id/members/:userId',
-  authenticateJWT,
-  async (req, res) => {
-    const serviceResponse = await BoardController.removeMemberFromBoard(req);
-    return handleServiceResponse(serviceResponse, res);
-  }
-);
-
-
+route.delete('/:id/members/:userId', authenticateJWT, async (req, res) => {
+  const serviceResponse = await BoardController.removeMemberFromBoard(req);
+  return handleServiceResponse(serviceResponse, res);
+});

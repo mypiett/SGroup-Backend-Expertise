@@ -258,4 +258,25 @@ export class ListController {
       );
     }
   }
+
+  static async getAllCardsInList(
+    listId: string
+  ): Promise<ServiceResponse<any>> {
+    try {
+      const cards = await listService.getAllCardsInList(listId);
+      return new ServiceResponse(
+        ResponseStatus.Success,
+        'Get all cards in list successfully',
+        cards,
+        StatusCodes.OK
+      );
+    } catch (error: any) {
+      return new ServiceResponse(
+        ResponseStatus.Failed,
+        error.message,
+        null,
+        StatusCodes.BAD_REQUEST
+      );
+    }
+  }
 }

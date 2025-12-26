@@ -2,16 +2,18 @@ import {
   Column,
   Entity,
   Index,
+  ManyToMany,
   OneToMany,
   PrimaryGeneratedColumn,
 } from 'typeorm';
 
 import { DateTimeEntity } from './base/dateTimeEntity';
 import { BoardMembers } from './board-member.entity';
-import { CardMembers } from './card-members.entity';
 import { Comment } from './comment.entity';
 import { Notification } from './notification.entity';
 import { WorkspaceMembers } from './workspace-member.entity';
+import { Attachment } from './attachment.entity';
+import { Card } from './card.entity';
 
 @Entity('users')
 @Index('idx_users_email', ['email'])
@@ -52,12 +54,15 @@ export class User extends DateTimeEntity {
   @OneToMany(() => BoardMembers, (boardMember) => boardMember.user)
   public boardMembers: BoardMembers[];
 
-  @OneToMany(() => CardMembers, (cardMember) => cardMember.user)
-  public cardMembers: CardMembers[];
+  @ManyToMany(() => Card, (card) => card.members)
+  public cards: Card[];
 
   @OneToMany(() => Comment, (comment) => comment.user)
   public comments: Comment[];
 
   @OneToMany(() => Notification, (notification) => notification.user)
   public notifications: Notification[];
+
+  @OneToMany(() => Attachment, (attachment) => attachment.user)
+  public attachments: Attachment[];
 }
