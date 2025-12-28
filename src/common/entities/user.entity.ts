@@ -9,11 +9,11 @@ import {
 
 import { DateTimeEntity } from './base/dateTimeEntity';
 import { BoardMembers } from './board-member.entity';
-import { Comment } from './comment.entity';
 import { Notification } from './notification.entity';
 import { WorkspaceMembers } from './workspace-member.entity';
 import { Attachment } from './attachment.entity';
 import { Card } from './card.entity';
+import { Action } from './action.entity';
 
 @Entity('users')
 @Index('idx_users_email', ['email'])
@@ -57,12 +57,12 @@ export class User extends DateTimeEntity {
   @ManyToMany(() => Card, (card) => card.members)
   public cards: Card[];
 
-  @OneToMany(() => Comment, (comment) => comment.user)
-  public comments: Comment[];
-
   @OneToMany(() => Notification, (notification) => notification.user)
   public notifications: Notification[];
 
   @OneToMany(() => Attachment, (attachment) => attachment.user)
   public attachments: Attachment[];
+
+  @OneToMany(() => Action, (action) => action.memberCreator)
+  public actions: Action[];
 }
