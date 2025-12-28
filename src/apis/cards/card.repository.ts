@@ -176,6 +176,22 @@ export class CardRepository {
     return await query.getOne();
   }
 
+  async getCardWithMembers(cardId: string): Promise<Card | null> {
+    return this.cardRepository.findOne({
+      where: { id: cardId },
+      relations: ['members'],
+      select: {
+        id: true,
+        title: true,
+        members: {
+          id: true,
+          name: true,
+          email: true,
+        },
+      },
+    });
+  }
+
   async createCard(
     listId: string,
     boardId: string,

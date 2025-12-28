@@ -1,9 +1,12 @@
 import { ListRepository } from '@/apis/lists/list.repository';
 import { CardRepository } from './card.repository';
+import { NotificationService } from '@/apis/notification/notification.service';
+import { NotificationType } from '@/common/entities/notification.entity';
 
 export class CardService {
   private cardRepository = new CardRepository();
   private listRepository = new ListRepository();
+  private notificationService = new NotificationService();
   async getCard(cardId: string, query: any): Promise<any> {
     const card = await this.cardRepository.getCardById(cardId, query);
     if (!card) {
@@ -103,10 +106,14 @@ export class CardService {
     updateData: any,
     userId?: string
   ): Promise<any> {
+    // Get card with basic fields for comparison
     const oldCard = await this.cardRepository.getCardById(cardId, {});
     if (!oldCard) {
       throw new Error('Card not found');
     }
+    // Get card with members separately for notifications
+    const cardWithMembers =
+      await this.cardRepository.getCardWithMembers(cardId);
 
     const {
       title,
@@ -159,6 +166,27 @@ export class CardService {
 
       if (Object.keys(changes).length > 0) {
         await this.cardRepository.logUpdateAction(cardId, userId, changes);
+      }
+
+      // Send notification when due date is set/changed
+      if (
+        changes.due &&
+        cardWithMembers?.members &&
+        cardWithMembers.members.length > 0
+      ) {
+        const memberIds = cardWithMembers.members.map((member) => member.id);
+        await this.notificationService.createAndSendNotificationsToUsers({
+          type: NotificationType.CARD_DUE_SOON,
+          recipientIds: memberIds,
+          notificationData: {
+            cardId,
+            cardTitle: oldCard.title,
+            oldDue: changes.due.old,
+            newDue: changes.due.new,
+            updaterId: userId,
+          },
+          excludeUserId: userId,
+        });
       }
     }
 
@@ -274,12 +302,30 @@ export class CardService {
   }
 
   async addComment(cardId: string, userId: string, text: string): Promise<any> {
-    const card = await this.cardRepository.getCardById(cardId, {});
+    const card = await this.cardRepository.getCardWithMembers(cardId);
     if (!card) {
       throw new Error('Card not found');
     }
 
-    return await this.cardRepository.addComment(cardId, userId, text);
+    const action = await this.cardRepository.addComment(cardId, userId, text);
+    // Send notifications to card members
+    if (card.members && card.members.length > 0) {
+      const memberIds = card.members.map((member) => member.id);
+      await this.notificationService.createAndSendNotificationsToUsers({
+        type: NotificationType.CARD_COMMENT,
+        recipientIds: memberIds,
+        actionId: action.id,
+        notificationData: {
+          cardId,
+          cardTitle: card.title,
+          text,
+          commenterId: userId,
+        },
+        excludeUserId: userId,
+      });
+    }
+
+    return action;
   }
 
   async updateComment(
@@ -315,7 +361,7 @@ export class CardService {
       setCover?: boolean;
     }
   ): Promise<any> {
-    const card = await this.cardRepository.getCardById(cardId, {});
+    const card = await this.cardRepository.getCardWithMembers(cardId);
     if (!card) {
       throw new Error('Card not found');
     }
@@ -341,13 +387,36 @@ export class CardService {
       throw new Error('Either url or file must be provided');
     }
 
-    return await this.cardRepository.createAttachment(cardId, userId, {
-      name: attachmentData.name,
-      url,
-      mimeType,
-      bytes,
-      setCover: attachmentData.setCover,
-    });
+    const attachment = await this.cardRepository.createAttachment(
+      cardId,
+      userId,
+      {
+        name: attachmentData.name,
+        url,
+        mimeType,
+        bytes,
+        setCover: attachmentData.setCover,
+      }
+    );
+
+    // Send notifications to card members
+    if (card.members && card.members.length > 0) {
+      const memberIds = card.members.map((member) => member.id);
+      await this.notificationService.createAndSendNotificationsToUsers({
+        type: NotificationType.CARD_ATTACHMENT_ADDED,
+        recipientIds: memberIds,
+        notificationData: {
+          cardId,
+          cardTitle: card.title,
+          attachmentName: attachmentData.name,
+          attachmentId: attachment.id,
+          uploaderId: userId,
+        },
+        excludeUserId: userId,
+      });
+    }
+
+    return attachment;
   }
 
   async deleteAttachment(

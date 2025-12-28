@@ -3,13 +3,21 @@ import { verifyJwt } from '../utils/jwtUtils';
 
 const authenticateJWT = (req: Request, res: Response, next: NextFunction) => {
   const authHeader = req.headers.authorization;
+  // Support token via query param for SSE (EventSource doesn't support headers)
+  const queryToken = req.query.token as string;
   console.log('🚀 ~ authenticateJWT ~ authHeader:', authHeader);
 
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return res.status(401).json({ message: 'Access token required' });
+  let token: string | undefined;
+
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    token = authHeader.split(' ')[1];
+  } else if (queryToken) {
+    token = queryToken;
   }
 
-  const token = authHeader.split(' ')[1];
+  if (!token) {
+    return res.status(401).json({ message: 'Access token required' });
+  }
 
   try {
     const decoded = verifyJwt(token);
