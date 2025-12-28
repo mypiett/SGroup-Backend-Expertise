@@ -29,7 +29,6 @@ export class Label extends DateTimeEntity {
   @Column({ type: 'varchar', length: 50 })
   color: string;
 
-  // Quan hệ Many-to-Many với Card
   @ManyToMany(() => Card, (card) => card.labels)
   public cards: Card[];
 }

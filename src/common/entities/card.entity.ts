@@ -11,7 +11,6 @@ import {
 } from 'typeorm';
 
 import { DateTimeEntity } from './base/dateTimeEntity';
-import { Comment } from './comment.entity';
 import { List } from './list.entity';
 import { Board } from './board.entity';
 import { User } from './user.entity';
@@ -19,6 +18,7 @@ import { CardCover } from './card-cover.entity';
 import { Label } from './label.entity';
 import { Attachment } from './attachment.entity';
 import { Checklist } from './checklist.entity';
+import { Action } from './action.entity';
 
 @Entity('cards')
 @Index('idx_card_list_id', ['list'])
@@ -80,9 +80,6 @@ export class Card extends DateTimeEntity {
   })
   public members: User[];
 
-  @OneToMany(() => Comment, (comment) => comment.card)
-  public comments: Comment[];
-
   @Column({ type: 'uuid', nullable: true })
   public coverId: string;
   @ManyToOne(() => CardCover, (cardCover) => cardCover.cards, {
@@ -105,4 +102,7 @@ export class Card extends DateTimeEntity {
 
   @OneToMany(() => Checklist, (checklist) => checklist.card)
   public checklists: Checklist[];
+
+  @OneToMany(() => Action, (action) => action.card)
+  public actions: Action[];
 }

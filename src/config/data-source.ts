@@ -4,8 +4,6 @@ import * as dotenv from 'dotenv';
 import { Board } from '@/common/entities/board.entity';
 import { BoardMembers } from '@/common/entities/board-member.entity';
 import { Card } from '@/common/entities/card.entity';
-import { CardMembers } from '@/common/entities/card-members.entity';
-import { Comment } from '@/common/entities/comment.entity';
 import { List } from '@/common/entities/list.entity';
 import { Notification } from '@/common/entities/notification.entity';
 import { Permission } from '@/common/entities/permission.entity';
@@ -21,6 +19,7 @@ import { Label } from '@/common/entities/label.entity';
 import { Attachment } from '@/common/entities/attachment.entity';
 import { Checklist } from '@/common/entities/checklist.entity';
 import { CheckItem } from '@/common/entities/checkItem.entity';
+import { Action } from '@/common/entities/action.entity';
 
 dotenv.config();
 
@@ -40,8 +39,6 @@ export const AppDataSource = new DataSource({
     Board,
     List,
     Card,
-    CardMembers,
-    Comment,
     Notification,
     RefreshToken,
     Role,
@@ -54,6 +51,7 @@ export const AppDataSource = new DataSource({
     Attachment,
     Checklist,
     CheckItem,
+    Action,
   ],
   migrations: ['src/migration/**/*.ts'],
   subscribers: [],

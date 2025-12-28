@@ -5,6 +5,14 @@ const booleanString = z
   .optional()
   .transform((value) => value === 'true');
 
+const numberString = z
+  .string()
+  .refine((val) => !isNaN(Number(val)), {
+    message: 'Invalid number string',
+  })
+  .transform((val) => Number(val));
+
+// Card schemas
 export const CardIdSchema = z.object({
   params: z.object({
     id: z.uuid(),
@@ -44,8 +52,6 @@ export const CreateCardSchema = z.object({
     isCompleted: z.boolean().optional(),
     cardSourceId: z.uuid().optional(),
     keepFromSource: z.string().optional(),
-    memberIds: z.array(z.uuid()).optional(),
-    labelIds: z.array(z.uuid()).optional(),
   }),
 });
 
@@ -64,5 +70,196 @@ export const UpdateCardSchema = z.object({
     start: z.string().optional(),
     due: z.string().optional(),
     isCompleted: z.boolean().optional(),
+  }),
+});
+
+// Label and Member schemas
+export const CardLabelSchema = z.object({
+  params: z.object({
+    id: z.uuid(),
+    labelId: z.uuid(),
+  }),
+});
+
+export const CardMemberSchema = z.object({
+  params: z.object({
+    id: z.uuid(),
+    memberId: z.uuid(),
+  }),
+});
+
+// Comment schemas
+export const CardActionIdSchema = z.object({
+  id: z.uuid(),
+  actionId: z.uuid(),
+});
+
+export const GetActionSchema = z.object({
+  params: z.object({
+    id: z.uuid(),
+  }),
+  query: z.object({
+    filter: z.string().optional(),
+    page: numberString.optional(),
+  }),
+});
+
+export const AddCommentSchema = z.object({
+  params: z.object({
+    id: z.uuid(),
+  }),
+  body: z.object({
+    text: z.string().min(1, 'Text is required'),
+  }),
+});
+
+export const UpdateCommentSchema = z.object({
+  params: CardActionIdSchema,
+  body: z.object({
+    text: z.string().min(1, 'Text is required'),
+  }),
+});
+
+export const DeleteCommentSchema = z.object({
+  params: CardActionIdSchema,
+});
+
+// Attchment schemas
+export const CreateAttachmentSchema = z.object({
+  params: z.object({
+    id: z.uuid(),
+  }),
+  body: z.object({
+    url: z.url('Invalid URL').optional(),
+    name: z.string().min(1, 'Name is required').max(255),
+    file: z.string().optional(),
+    // mimeType: z.string().max(50).optional(),
+    // bytes: z.number().optional(),
+    setCover: booleanString,
+  }),
+});
+
+export const DeleteAttachmentSchema = z.object({
+  params: z.object({
+    id: z.uuid(),
+    attachmentId: z.uuid(),
+  }),
+});
+
+export const GetAttchmentsSchema = z.object({
+  params: z.object({
+    id: z.uuid(),
+  }),
+  query: z.object({
+    fields: z.string().optional(),
+  }),
+});
+
+export const GetAnttachmentSchema = z.object({
+  params: z.object({
+    id: z.uuid(),
+    attachmentId: z.uuid(),
+  }),
+  query: z.object({
+    fields: z.string().optional(),
+  }),
+});
+
+// Checklist schemas
+export const GetChecklistsSchema = z.object({
+  params: z.object({
+    id: z.uuid(),
+  }),
+  query: z.object({
+    checkItems: booleanString,
+    checkItemFields: z.string().optional(),
+    filter: z.string().optional(),
+    field: z.string().optional(),
+  }),
+});
+
+export const CreateChecklistSchema = z.object({
+  params: z.object({
+    id: z.uuid(),
+  }),
+  body: z.object({
+    name: z.string().min(1, 'Name is required').max(255),
+    position: z.number(),
+    checklistSourceId: z.uuid().optional(),
+  }),
+});
+
+export const UpdateChecklistSchema = z.object({
+  params: z.object({
+    id: z.uuid(),
+    checklistId: z.uuid(),
+  }),
+  body: z.object({
+    name: z.string().min(1, 'Name is required').max(255).optional(),
+    position: z.number().optional(),
+  }),
+});
+
+export const DeleteChecklistSchema = z.object({
+  params: z.object({
+    id: z.uuid(),
+    checklistId: z.uuid(),
+  }),
+});
+
+export const GetCheckItemsSchema = z.object({
+  params: z.object({
+    id: z.uuid(),
+    checklistId: z.uuid(),
+  }),
+  query: z.object({
+    filter: z.string().optional(),
+    field: z.string().optional(),
+  }),
+});
+
+export const GetCheckItemSchema = z.object({
+  params: z.object({
+    id: z.uuid(),
+    checklistId: z.uuid(),
+    checkItemId: z.uuid(),
+  }),
+});
+
+export const CreateCheckItemSchema = z.object({
+  params: z.object({
+    id: z.uuid(),
+    checklistId: z.uuid(),
+  }),
+  body: z.object({
+    name: z.string().min(1, 'Name is required').max(255),
+    position: z.number().optional(),
+    isChecked: z.boolean().optional(),
+    due: z.string().optional(),
+    dueReminder: z.string().optional(),
+  }),
+});
+
+export const UpdateCheckItemSchema = z.object({
+  params: z.object({
+    id: z.uuid(),
+    checklistId: z.uuid(),
+    checkItemId: z.uuid(),
+  }),
+  body: z.object({
+    name: z.string().min(1, 'Name is required').max(255).optional(),
+    position: z.number().optional(),
+    isChecked: z.boolean().optional(),
+    due: z.string().optional(),
+    dueReminder: z.string().optional(),
+    checklistId: z.uuid().optional(),
+  }),
+});
+
+export const DeleteCheckItemSchema = z.object({
+  params: z.object({
+    id: z.uuid(),
+    checklistId: z.uuid(),
+    checkItemId: z.uuid(),
   }),
 });
