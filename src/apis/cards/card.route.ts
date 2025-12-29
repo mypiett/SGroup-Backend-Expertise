@@ -30,6 +30,7 @@ import {
 } from './card.schema';
 import { CardController } from './card.controller';
 import { attachmentUpload } from '@/config/multer';
+import { ChecklistController } from '../checklists/checklist.controller';
 
 const route = Router();
 
@@ -268,4 +269,8 @@ route.delete(
   }
 );
 
+route.get('/:id/checklists', async (req, res) => {
+  const response = await ChecklistController.getByCard(req.params.id);
+  return handleServiceResponse(response, res);
+});
 export default route;
