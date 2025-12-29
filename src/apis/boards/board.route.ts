@@ -105,7 +105,7 @@ route.post(
 route.get(
   '/',
   authenticateJWT,
-  // requireBoardPermissions(PERMISSIONS.BOARDS_READ),
+  requireBoardPermissions(PERMISSIONS.BOARDS_READ),
   async (req, res) => {
     const serviceResponse = await BoardController.findAll(req);
     return handleServiceResponse(serviceResponse, res);

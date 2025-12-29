@@ -62,11 +62,3 @@ export class UpdateVisibilityDto {
   @IsNotEmpty({ message: 'Visibility is required' })
   visibility: 'private' | 'public';
 }
-
-export class UpdateVisibilityDto {
-  @IsEnum(['private', 'public'], {
-    message: 'Visibility must be private or public',
-  })
-  @IsNotEmpty({ message: 'Visibility is required' })
-  visibility: 'private' | 'public';
-}

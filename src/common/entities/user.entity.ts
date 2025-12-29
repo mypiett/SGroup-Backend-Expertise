@@ -57,7 +57,7 @@ export class User extends DateTimeEntity {
   @ManyToMany(() => Card, (card) => card.members)
   public cards: Card[];
 
-  @OneToMany(() => Notification, (notification) => notification.user)
+  @OneToMany(() => Notification, (notification) => notification.recipient)
   public notifications: Notification[];
 
   @OneToMany(() => Attachment, (attachment) => attachment.user)
