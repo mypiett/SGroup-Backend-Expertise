@@ -13,6 +13,7 @@ import { DateTimeEntity } from './base/dateTimeEntity';
 import { BoardMembers } from './board-member.entity';
 import { List } from './list.entity';
 import { Workspace } from './workspace.entity';
+import { Label } from './label.entity';
 
 @Entity('boards')
 // ✅ PERFORMANCE INDEXES
@@ -50,7 +51,6 @@ export class Board extends DateTimeEntity {
   })
   public visibility: string;
 
-  //cho phép member workspace join/edit board
   @Column({ type: 'bool', default: false })
   public workspaceMembersCanEditAndJoin: boolean;
 
@@ -72,7 +72,6 @@ export class Board extends DateTimeEntity {
   @ManyToOne(() => Workspace, (workspace) => workspace.id, {
     onDelete: 'CASCADE',
   })
-  
   @JoinColumn({ name: 'workspaceId' })
   public workspace: Workspace;
 
@@ -86,4 +85,8 @@ export class Board extends DateTimeEntity {
 
   @Column({ type: 'varchar', length: 255, nullable: true })
   public inviteToken: string;
+
+  // labels
+  @OneToMany(() => Label, (label) => label.board)
+  public labels: Label[];
 }
