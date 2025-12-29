@@ -27,7 +27,6 @@ export interface AccessResult {
   userContext?: UserContext;
 }
 
-// Role hierarchy for comparison (higher number = higher privilege)
 const ROLE_HIERARCHY: Record<Role, number> = {
   [ROLES.ADMIN]: 100,
   [ROLES.WORKSPACE_ADMIN]: 90,
@@ -307,24 +306,16 @@ export class RBACProvider {
   private listRepo = AppDataSource.getRepository(List);
   private cardRepo = AppDataSource.getRepository(Card);
 
-  /**
-   * Compare two roles and return the higher privilege one
-   */
   private getHigherRole(role1: Role | null, role2: Role | null): Role | null {
     if (!role1) return role2;
     if (!role2) return role1;
     return ROLE_HIERARCHY[role1] >= ROLE_HIERARCHY[role2] ? role1 : role2;
   }
 
-  /**
-   * Get board info with Redis caching
-   */
   private async getBoardInfo(boardId: string): Promise<CachedBoardInfo | null> {
-    // Try cache first
     const cached = await rbacCache.getBoardInfo<CachedBoardInfo>(boardId);
     if (cached) return cached;
 
-    // Query database
     const board = await this.boardRepo
       .createQueryBuilder('board')
       .leftJoin('board.workspace', 'workspace')
@@ -346,7 +337,6 @@ export class RBACProvider {
       workspaceId: board.workspace.id,
     };
 
-    // Cache the result
     await rbacCache.setBoardInfo(boardId, boardInfo);
     return boardInfo;
   }
@@ -355,7 +345,6 @@ export class RBACProvider {
     userId: string,
     workspaceId: string
   ): Promise<{ role: Role; member: WorkspaceMembers } | null> {
-    // Try Redis cache first
     const cached = await rbacCache.getWorkspaceMembership<{
       role: Role;
       member: WorkspaceMembers;
@@ -374,7 +363,6 @@ export class RBACProvider {
 
     const result = { role: member.role.name as Role, member };
 
-    // Cache in Redis
     await rbacCache.setWorkspaceMembership(userId, workspaceId, result);
     return result;
   }
@@ -383,7 +371,6 @@ export class RBACProvider {
     userId: string,
     boardId: string
   ): Promise<{ role: Role; member: BoardMembers } | null> {
-    // Try Redis cache first
     const cached = await rbacCache.getBoardMembership<{
       role: Role;
       member: BoardMembers;
@@ -402,14 +389,12 @@ export class RBACProvider {
 
     const result = { role: member.role.name as Role, member };
 
-    // Cache in Redis
     await rbacCache.setBoardMembership(userId, boardId, result);
     return result;
   }
 
   async getBoardIdFromList(listId: string): Promise<string | null> {
-    const cacheKey = `list_board_${listId}`;
-    const cached = this.getCached<string>(cacheKey);
+    const cached = await rbacCache.getListBoardId(listId);
     if (cached) return cached;
 
     const list = await this.listRepo
@@ -421,13 +406,12 @@ export class RBACProvider {
 
     if (!list?.board?.id) return null;
 
-    this.setCache(cacheKey, list.board.id);
+    await rbacCache.setListBoardId(listId, list.board.id);
     return list.board.id;
   }
 
   async getBoardIdFromCard(cardId: string): Promise<string | null> {
-    const cacheKey = `card_board_${cardId}`;
-    const cached = this.getCached<string>(cacheKey);
+    const cached = await rbacCache.getCardBoardId(cardId);
     if (cached) return cached;
 
     const card = await this.cardRepo
@@ -439,7 +423,7 @@ export class RBACProvider {
 
     if (!card?.board?.id) return null;
 
-    this.setCache(cacheKey, card.board.id);
+    await rbacCache.setCardBoardId(cardId, card.board.id);
     return card.board.id;
   }
 
@@ -460,10 +444,8 @@ export class RBACProvider {
       return { allowed: false, reason: 'Workspace is archived' };
     }
 
-    // Public workspace - anyone can view
     if (workspace.visibility === 'public') {
       if (userId) {
-        // If authenticated, still get membership info for userContext
         const membership = await this.getWorkspaceMembership(
           userId,
           workspaceId
@@ -483,7 +465,6 @@ export class RBACProvider {
       return { allowed: true };
     }
 
-    // Private workspace - must be a member
     if (!userId) {
       return { allowed: false, reason: 'Authentication required' };
     }
@@ -508,14 +489,12 @@ export class RBACProvider {
     userId: string | null,
     boardId: string
   ): Promise<AccessResult> {
-    // Use cached board info
     const board = await this.getBoardInfo(boardId);
 
     if (!board) {
       return { allowed: false, reason: 'Board not found' };
     }
 
-    // Get memberships in parallel if user is authenticated
     let boardMembership: { role: Role; member: BoardMembers } | null = null;
     let workspaceMembership: { role: Role; member: WorkspaceMembers } | null =
       null;
@@ -527,13 +506,11 @@ export class RBACProvider {
       ]);
     }
 
-    // Board closed - only board members or workspace admins can view
     if (board.isClosed) {
       if (!userId) {
         return { allowed: false, reason: 'Board is closed' };
       }
 
-      // Workspace admins can always view closed boards
       const adminRoles: Role[] = [
         ROLES.WORKSPACE_ADMIN,
         ROLES.WORKSPACE_MODERATOR,
@@ -548,7 +525,6 @@ export class RBACProvider {
 
     const visibility = board.visibility;
 
-    // Public board - anyone can view
     if (visibility === 'public') {
       return {
         allowed: true,
@@ -568,7 +544,6 @@ export class RBACProvider {
       return { allowed: false, reason: 'Authentication required' };
     }
 
-    // Workspace visibility - workspace members can view
     if (visibility === 'workspace') {
       if (workspaceMembership) {
         return {
@@ -584,7 +559,6 @@ export class RBACProvider {
       }
     }
 
-    // Private board - only board members or workspace admins
     if (boardMembership) {
       return {
         allowed: true,
@@ -598,7 +572,6 @@ export class RBACProvider {
       };
     }
 
-    // Workspace admins can view private boards in their workspace
     if (workspaceMembership) {
       const adminRoles: Role[] = [
         ROLES.WORKSPACE_ADMIN,
@@ -687,11 +660,9 @@ export class RBACProvider {
       this.getWorkspaceMembership(userId, board.workspaceId),
     ]);
 
-    // Get the higher privilege role between workspace and board membership
     const workspaceRole = workspaceMembership?.role || null;
     const boardRole = boardMembership?.role || null;
 
-    // Workspace admins always have high privilege on boards
     if (workspaceMembership) {
       const adminRoles: Role[] = [
         ROLES.WORKSPACE_ADMIN,
@@ -702,12 +673,10 @@ export class RBACProvider {
       }
     }
 
-    // If user is a board member, return the higher role
     if (boardMembership) {
       return this.getHigherRole(boardRole, workspaceRole);
     }
 
-    // If board is workspace-visible and user is workspace member
     if (board.visibility === 'workspace' && workspaceMembership) {
       return workspaceRole;
     }
@@ -728,9 +697,6 @@ export class RBACProvider {
     return ROLE_HIERARCHY[role1] - ROLE_HIERARCHY[role2];
   }
 
-  /**
-   * Clear cache - delegates to Redis cache manager
-   */
   async clearCache(userId?: string, resourceId?: string): Promise<void> {
     if (userId && resourceId) {
       await Promise.all([
@@ -744,16 +710,10 @@ export class RBACProvider {
     }
   }
 
-  /**
-   * Clear board-specific cache when board settings change
-   */
   async clearBoardCache(boardId: string): Promise<void> {
     await rbacCache.clearBoardCache(boardId);
   }
 
-  /**
-   * Clear workspace-specific cache when workspace settings change
-   */
   async clearWorkspaceCache(workspaceId: string): Promise<void> {
     await rbacCache.clearWorkspaceCache(workspaceId);
   }

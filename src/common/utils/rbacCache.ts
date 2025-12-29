@@ -160,6 +160,34 @@ export class RBACCache {
     ]);
   }
 
+  getListBoardKey(listId: string): string {
+    return this.getKey('list_board', listId);
+  }
+
+  async getListBoardId(listId: string): Promise<string | null> {
+    const key = this.getListBoardKey(listId);
+    return this.get<string>(key);
+  }
+
+  async setListBoardId(listId: string, boardId: string): Promise<void> {
+    const key = this.getListBoardKey(listId);
+    await this.set(key, boardId, 300); // 5 minutes TTL
+  }
+
+  getCardBoardKey(cardId: string): string {
+    return this.getKey('card_board', cardId);
+  }
+
+  async getCardBoardId(cardId: string): Promise<string | null> {
+    const key = this.getCardBoardKey(cardId);
+    return this.get<string>(key);
+  }
+
+  async setCardBoardId(cardId: string, boardId: string): Promise<void> {
+    const key = this.getCardBoardKey(cardId);
+    await this.set(key, boardId, 300); // 5 minutes TTL
+  }
+
   async clearAll(): Promise<void> {
     await this.deleteByPattern('*');
   }

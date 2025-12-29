@@ -700,4 +700,188 @@ export function requireCardPermissions(
   };
 }
 
+/**
+ * Require specific roles to access a list (resolves boardId from listId)
+ */
+export function requireListRole(
+  allowedRoles: Role[],
+  listIdField: string = 'id',
+  idSource: 'params' | 'body' | 'query' = 'params'
+) {
+  return async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const userId = req.user?.userId;
+      if (!userId) {
+        return res.status(401).json({
+          success: false,
+          message: 'Authentication required',
+        });
+      }
+
+      let listId: string | null = null;
+      switch (idSource) {
+        case 'params':
+          listId = req.params[listIdField];
+          break;
+        case 'body':
+          listId = req.body[listIdField];
+          break;
+        case 'query':
+          listId = req.query[listIdField] as string;
+          break;
+      }
+
+      if (!listId) {
+        return res.status(400).json({
+          success: false,
+          message: `${listIdField} is required`,
+        });
+      }
+
+      // Resolve boardId from listId
+      const boardId = await rbacProvider.getBoardIdFromList(listId);
+      if (!boardId) {
+        return res.status(404).json({
+          success: false,
+          message: 'List not found',
+        });
+      }
+
+      // Get effective role for this board
+      const effectiveRole = await rbacProvider.getEffectiveBoardRole(
+        userId,
+        boardId
+      );
+
+      if (!effectiveRole) {
+        return res.status(403).json({
+          success: false,
+          message: 'Not authorized to access this list',
+        });
+      }
+
+      if (!allowedRoles.includes(effectiveRole)) {
+        return res.status(403).json({
+          success: false,
+          message: 'Insufficient role privileges',
+        });
+      }
+
+      const boardMembership = await rbacProvider.getBoardMembership(
+        userId,
+        boardId
+      );
+
+      req.userContext = {
+        userId,
+        boardRole: boardMembership?.role || effectiveRole,
+        isWorkspaceMember: effectiveRole !== boardMembership?.role,
+        isBoardMember: !!boardMembership,
+      };
+
+      req.resolvedBoardId = boardId;
+
+      next();
+    } catch (error) {
+      console.error('List role check error:', error);
+      return res.status(500).json({
+        success: false,
+        message: 'Role check failed',
+      });
+    }
+  };
+}
+
+/**
+ * Require specific roles to access a card (resolves boardId from cardId)
+ */
+export function requireCardRole(
+  allowedRoles: Role[],
+  cardIdField: string = 'id',
+  idSource: 'params' | 'body' | 'query' = 'params'
+) {
+  return async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const userId = req.user?.userId;
+      if (!userId) {
+        return res.status(401).json({
+          success: false,
+          message: 'Authentication required',
+        });
+      }
+
+      let cardId: string | null = null;
+      switch (idSource) {
+        case 'params':
+          cardId = req.params[cardIdField];
+          break;
+        case 'body':
+          cardId = req.body[cardIdField];
+          break;
+        case 'query':
+          cardId = req.query[cardIdField] as string;
+          break;
+      }
+
+      if (!cardId) {
+        return res.status(400).json({
+          success: false,
+          message: `${cardIdField} is required`,
+        });
+      }
+
+      // Resolve boardId from cardId
+      const boardId = await rbacProvider.getBoardIdFromCard(cardId);
+      if (!boardId) {
+        return res.status(404).json({
+          success: false,
+          message: 'Card not found',
+        });
+      }
+
+      // Get effective role for this board
+      const effectiveRole = await rbacProvider.getEffectiveBoardRole(
+        userId,
+        boardId
+      );
+
+      if (!effectiveRole) {
+        return res.status(403).json({
+          success: false,
+          message: 'Not authorized to access this card',
+        });
+      }
+
+      if (!allowedRoles.includes(effectiveRole)) {
+        return res.status(403).json({
+          success: false,
+          message: 'Insufficient role privileges',
+        });
+      }
+
+      const boardMembership = await rbacProvider.getBoardMembership(
+        userId,
+        boardId
+      );
+
+      req.userContext = {
+        userId,
+        boardRole: boardMembership?.role || effectiveRole,
+        isWorkspaceMember: effectiveRole !== boardMembership?.role,
+        isBoardMember: !!boardMembership,
+      };
+
+      req.resolvedBoardId = boardId;
+
+      next();
+    } catch (error) {
+      console.error('Card role check error:', error);
+      return res.status(500).json({
+        success: false,
+        message: 'Role check failed',
+      });
+    }
+  };
+}
+
 export { AuthorizationOptions, PERMISSIONS, ROLES };
