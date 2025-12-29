@@ -266,4 +266,15 @@ export class ListService {
     }
     return result;
   }
+
+  async getAllCardsInList(listId: string) {
+    // Kiểm tra list tồn tại
+    const list = await this.listRepository.findListById(listId, false);
+    if (!list) {
+      throw new Error('List not found');
+    }
+    // Lấy tất cả cards trong list
+    const cards = await this.listRepository.getCardsByList(listId, false);
+    return cards;
+  }
 }

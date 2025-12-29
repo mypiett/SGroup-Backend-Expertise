@@ -17,7 +17,6 @@ import {
   PERMISSIONS,
   requireListPermissions,
 } from '@/common/middleware/authorization';
-import authenticateJWT from '@/common/middleware/authentication';
 
 const route = Router();
 route.use('/:id', requireBoardMember());
@@ -49,7 +48,6 @@ route.use('/:id', requireBoardMember());
  */
 route.patch(
   '/:id/archive',
-  authenticateJWT,
   validateRequest(ListIdSchema),
   requireListPermissions(PERMISSIONS.LISTS_ARCHIVE),
   async (req, res) => {
@@ -85,7 +83,6 @@ route.patch(
  */
 route.patch(
   '/:id/reopen',
-  authenticateJWT,
   validateRequest(ListIdSchema),
   requireListPermissions(PERMISSIONS.LISTS_UPDATE),
   async (req, res) => {
@@ -121,7 +118,6 @@ route.patch(
  */
 route.patch(
   '/:id/archive-all-cards',
-  authenticateJWT,
   validateRequest(ListIdSchema),
   requireListPermissions(PERMISSIONS.CARDS_ARCHIVE),
   async (req, res) => {
@@ -170,7 +166,6 @@ route.patch(
  */
 route.patch(
   '/:id/move',
-  authenticateJWT,
   validateRequest(MoveListToBoardSchema),
   requireListPermissions(PERMISSIONS.LISTS_UPDATE),
   async (req, res) => {
@@ -229,7 +224,6 @@ route.patch(
  */
 route.patch(
   '/:id/move-all-cards',
-  authenticateJWT,
   validateRequest(MoveAllCardsSchema),
   requireListPermissions(PERMISSIONS.CARDS_MOVE),
   async (req, res) => {
@@ -293,7 +287,6 @@ route.patch(
  */
 route.post(
   '/:id/copy',
-  authenticateJWT,
   validateRequest(CopyListSchema),
   requireListPermissions(PERMISSIONS.LISTS_CREATE),
   async (req, res) => {
@@ -409,4 +402,35 @@ route.patch('/:id/reorder', validateRequest(ReorderList), async (req, res) => {
   );
   return handleServiceResponse(response, res);
 });
+
+/**
+ * @swagger
+ * /lists/{id}/cards:
+ *   get:
+ *     tags:
+ *       - Lists
+ *     summary: Get all cards in a list
+ *     description: Retrieve all cards that belong to a specific list
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         description: List ID
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     responses:
+ *       200:
+ *         description: Successfully retrieved all cards in the list
+ *       400:
+ *         description: Invalid input
+ *       404:
+ *         description: List not found
+ */
+route.get('/:id/cards', validateRequest(ListIdSchema), async (req, res) => {
+  const listId = req.params.id;
+  const response = await ListController.getAllCardsInList(listId);
+  return handleServiceResponse(response, res);
+});
+
 export default route;

@@ -16,6 +16,11 @@ import { User } from '@/common/entities/user.entity';
 import { Workspace } from '@/common/entities/workspace.entity';
 import { WorkspaceMembers } from '@/common/entities/workspace-member.entity';
 import { BoardTemplate } from '@/common/entities/board-template.entity';
+import { CardCover } from '@/common/entities/card-cover.entity';
+import { Label } from '@/common/entities/label.entity';
+import { Attachment } from '@/common/entities/attachment.entity';
+import { Checklist } from '@/common/entities/checklist.entity';
+import { CheckItem } from '@/common/entities/checkItem.entity';
 
 dotenv.config();
 
@@ -44,6 +49,11 @@ export const AppDataSource = new DataSource({
     Permission,
     BoardMembers,
     BoardTemplate,
+    CardCover,
+    Label,
+    Attachment,
+    Checklist,
+    CheckItem,
   ],
   migrations: ['src/migration/**/*.ts'],
   subscribers: [],
@@ -63,6 +73,6 @@ export const AppDataSource = new DataSource({
     duration: 30000,
     tableName: 'query_result_cache',
   },
-  maxQueryExecutionTime: 1000,
+  maxQueryExecutionTime: 3000,
   poolSize: 10,
 });
