@@ -13,6 +13,7 @@ import { Role } from '../../common/entities/role.entity';
 import { ROLES } from '../../common/constants';
 import { validateEmail } from '@/common/utils/validateEmail';
 import { redisClient } from '@/config/redisClient';
+import { rbacProvider } from '@/common/utils/rbac';
 import nodemailer from 'nodemailer';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -69,6 +70,9 @@ export class WorkspaceService {
       roleId: adminRole.id,
     });
     await this.workspaceMemberRepository.save(workspaceMember);
+
+    // Invalidate RBAC cache for the workspace creator
+    await rbacProvider.clearCache(userId, savedWorkspace.id);
 
     return savedWorkspace;
   }
@@ -410,6 +414,9 @@ export class WorkspaceService {
 
     await this.workspaceMemberRepository.save(newMember);
 
+    // Invalidate RBAC cache for the new member
+    await rbacProvider.clearCache(data.userId, workspaceId);
+
     // OPTIMIZATION: Select chỉ fields cần thiết, loại bỏ password
     const savedMember = await this.workspaceMemberRepository
       .createQueryBuilder('wm')
@@ -517,6 +524,9 @@ export class WorkspaceService {
       .where('id = :memberId', { memberId })
       .execute();
 
+    // Invalidate RBAC cache for the updated member
+    await rbacProvider.clearCache(member.userId, workspaceId);
+
     // Select chỉ fields cần thiết cho updated member
     const updatedMember = await this.workspaceMemberRepository
       .createQueryBuilder('wm')
@@ -539,12 +549,6 @@ export class WorkspaceService {
         'workspace.title',
       ])
       .getOne();
-
-    console.log('Updated member from database:', {
-      id: updatedMember?.id,
-      roleId: updatedMember?.roleId,
-      roleName: updatedMember?.role?.name,
-    });
 
     return {
       message: 'Member role updated successfully',
@@ -621,7 +625,13 @@ export class WorkspaceService {
       }
     }
 
+    // Store userId before removing (member object will be modified)
+    const removedUserId = member.userId;
+
     await this.workspaceMemberRepository.remove(member);
+
+    // Invalidate RBAC cache for the removed member
+    await rbacProvider.clearCache(removedUserId, workspaceId);
 
     return { message: 'Member removed successfully' };
   }

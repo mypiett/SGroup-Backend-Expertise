@@ -57,26 +57,6 @@ route.get('/:id', async (req, res) => {
 
 /**
  * @swagger
- * /users/me:
- *   get:
- *     tags:
- *       - Users
- *     summary: Get current user profile
- *     security:
- *       - bearerAuth: []
- *     responses:
- *       200:
- *         description: Current user profile
- *       401:
- *         description: Unauthorized
- */
-route.get('/me', authenticateJWT, async (req, res) => {
-  const serviceResponse = await UserController.getMe(req);
-  return handleServiceResponse(serviceResponse, res);
-});
-
-/**
- * @swagger
  * /users/me/profile:
  *   patch:
  *     tags:

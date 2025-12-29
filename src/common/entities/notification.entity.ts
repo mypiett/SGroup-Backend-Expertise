@@ -34,7 +34,7 @@ export class Notification {
   @Column({ default: false })
   isRead: boolean;
 
-  @Column({ type: 'jsonb', nullable: true }) // dữ liệu bổ sung liên quan đến thông báo
+  @Column({ type: 'jsonb', nullable: true })
   data: any;
 
   @CreateDateColumn()
@@ -42,7 +42,6 @@ export class Notification {
 
   @Column({ type: 'uuid' })
   recipientId: string;
-
   @ManyToOne(() => User, (user) => user.notifications, {
     onDelete: 'CASCADE',
   })
@@ -51,7 +50,6 @@ export class Notification {
 
   @Column({ type: 'uuid', nullable: true })
   actionId: string;
-
   @OneToOne(() => Action, {
     nullable: true,
     onDelete: 'SET NULL',

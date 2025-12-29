@@ -7,6 +7,7 @@ import { Role } from '@/common/entities/role.entity';
 import { BoardMembers } from '@/common/entities/board-member.entity';
 import { ROLES } from '@/common/constants/roles';
 import { EmailService } from '../mail/mail.service';
+import { rbacProvider } from '@/common/utils/rbac';
 import crypto from 'crypto';
 import { AddBoardMemberInput } from './board.schema';
 
@@ -48,6 +49,9 @@ export class BoardService {
         });
 
         await this.boardMemberRepository.save(boardMember);
+
+        // Invalidate RBAC cache for the board creator
+        await rbacProvider.clearCache(creatorId, savedBoard.id);
       } else {
         throw new Error('Owner role not found');
       }
@@ -178,6 +182,10 @@ export class BoardService {
     });
 
     await this.boardMemberRepository.save(newMember);
+
+    // Invalidate RBAC cache for the new board member
+    await rbacProvider.clearCache(user.id, boardId);
+
     const savedMember = await this.boardMemberRepository.findOne({
       where: { id: newMember.id },
       relations: ['user', 'role', 'board'],
@@ -278,6 +286,10 @@ export class BoardService {
       roleId: memberRole.id,
     });
     await this.boardMemberRepository.save(newMember);
+
+    // Invalidate RBAC cache for the new board member
+    await rbacProvider.clearCache(currentUserId, boardId);
+
     const savedMember = await this.boardMemberRepository.findOne({
       where: { id: newMember.id },
       relations: ['user', 'role', 'board'],
@@ -551,6 +563,9 @@ export class BoardService {
     }
 
     await this.boardMemberRepository.delete({ id: targetMember.id });
+
+    // Invalidate RBAC cache for the removed board member
+    await rbacProvider.clearCache(userIdToRemove, boardId);
 
     return {
       message: 'Member removed successfully',
