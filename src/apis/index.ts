@@ -7,6 +7,8 @@ import RoleRouter from './roles/role.route';
 import UserRouter from './users/user.route';
 import WorkspaceRouter from './workspaces/workspace.route';
 import ListRouter from './lists/list.route';
+import CardRouter from './cards/card.route';
+import NotificationRouter from './notification/notification.route';
 
 const route = Router();
 route.use('/users', UserRouter);
@@ -15,4 +17,6 @@ route.use('/workspaces', authenticateJWT, WorkspaceRouter);
 route.use('/boards', authenticateJWT, BoardRouter);
 route.use('/roles', authenticateJWT, RoleRouter);
 route.use('/lists', authenticateJWT, ListRouter);
+route.use('/cards', authenticateJWT, CardRouter);
+route.use('/notifications', authenticateJWT, NotificationRouter);
 export default route;

@@ -7,6 +7,7 @@ import { List } from '@/common/entities/list.entity';
 import { Card } from '@/common/entities/card.entity';
 import { ROLES, Role } from '@/common/constants/roles';
 import { Permission, PERMISSIONS } from '@/common/constants/permissions';
+import { rbacCache } from './rbacCache';
 
 export type ResourceType = 'workspace' | 'board' | 'list' | 'card';
 export type BoardVisibility = 'private' | 'workspace' | 'public';
@@ -24,6 +25,28 @@ export interface AccessResult {
   allowed: boolean;
   reason?: string;
   userContext?: UserContext;
+}
+
+const ROLE_HIERARCHY: Record<Role, number> = {
+  [ROLES.ADMIN]: 100,
+  [ROLES.WORKSPACE_ADMIN]: 90,
+  [ROLES.WORKSPACE_MODERATOR]: 80,
+  [ROLES.BOARD_OWNER]: 75,
+  [ROLES.BOARD_ADMIN]: 70,
+  [ROLES.WORKSPACE_MEMBER]: 60,
+  [ROLES.BOARD_MEMBER]: 50,
+  [ROLES.WORKSPACE_OBSERVER]: 40,
+  [ROLES.BOARD_OBSERVER]: 30,
+  [ROLES.USER]: 20,
+  [ROLES.GUEST]: 10,
+};
+
+// Cached board info interface
+interface CachedBoardInfo {
+  id: string;
+  visibility: BoardVisibility;
+  isClosed: boolean;
+  workspaceId: string;
 }
 
 const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
@@ -283,30 +306,49 @@ export class RBACProvider {
   private listRepo = AppDataSource.getRepository(List);
   private cardRepo = AppDataSource.getRepository(Card);
 
-  private cache = new Map<string, { data: any; expiry: number }>();
-  private CACHE_TTL = 30000;
-
-  private getCached<T>(key: string): T | null {
-    const cached = this.cache.get(key);
-    if (cached && cached.expiry > Date.now()) {
-      return cached.data as T;
-    }
-    this.cache.delete(key);
-    return null;
+  private getHigherRole(role1: Role | null, role2: Role | null): Role | null {
+    if (!role1) return role2;
+    if (!role2) return role1;
+    return ROLE_HIERARCHY[role1] >= ROLE_HIERARCHY[role2] ? role1 : role2;
   }
 
-  private setCache(key: string, data: any): void {
-    this.cache.set(key, { data, expiry: Date.now() + this.CACHE_TTL });
+  private async getBoardInfo(boardId: string): Promise<CachedBoardInfo | null> {
+    const cached = await rbacCache.getBoardInfo<CachedBoardInfo>(boardId);
+    if (cached) return cached;
+
+    const board = await this.boardRepo
+      .createQueryBuilder('board')
+      .leftJoin('board.workspace', 'workspace')
+      .where('board.id = :boardId', { boardId })
+      .select([
+        'board.id',
+        'board.visibility',
+        'board.isClosed',
+        'workspace.id',
+      ])
+      .getOne();
+
+    if (!board) return null;
+
+    const boardInfo: CachedBoardInfo = {
+      id: board.id,
+      visibility: board.visibility as BoardVisibility,
+      isClosed: board.isClosed,
+      workspaceId: board.workspace.id,
+    };
+
+    await rbacCache.setBoardInfo(boardId, boardInfo);
+    return boardInfo;
   }
 
   async getWorkspaceMembership(
     userId: string,
     workspaceId: string
   ): Promise<{ role: Role; member: WorkspaceMembers } | null> {
-    const cacheKey = `ws_member_${userId}_${workspaceId}`;
-    const cached = this.getCached<{ role: Role; member: WorkspaceMembers }>(
-      cacheKey
-    );
+    const cached = await rbacCache.getWorkspaceMembership<{
+      role: Role;
+      member: WorkspaceMembers;
+    }>(userId, workspaceId);
     if (cached) return cached;
 
     const member = await this.workspaceMemberRepo
@@ -320,7 +362,8 @@ export class RBACProvider {
     if (!member) return null;
 
     const result = { role: member.role.name as Role, member };
-    this.setCache(cacheKey, result);
+
+    await rbacCache.setWorkspaceMembership(userId, workspaceId, result);
     return result;
   }
 
@@ -328,10 +371,10 @@ export class RBACProvider {
     userId: string,
     boardId: string
   ): Promise<{ role: Role; member: BoardMembers } | null> {
-    const cacheKey = `board_member_${userId}_${boardId}`;
-    const cached = this.getCached<{ role: Role; member: BoardMembers }>(
-      cacheKey
-    );
+    const cached = await rbacCache.getBoardMembership<{
+      role: Role;
+      member: BoardMembers;
+    }>(userId, boardId);
     if (cached) return cached;
 
     const member = await this.boardMemberRepo
@@ -345,13 +388,13 @@ export class RBACProvider {
     if (!member) return null;
 
     const result = { role: member.role.name as Role, member };
-    this.setCache(cacheKey, result);
+
+    await rbacCache.setBoardMembership(userId, boardId, result);
     return result;
   }
 
   async getBoardIdFromList(listId: string): Promise<string | null> {
-    const cacheKey = `list_board_${listId}`;
-    const cached = this.getCached<string>(cacheKey);
+    const cached = await rbacCache.getListBoardId(listId);
     if (cached) return cached;
 
     const list = await this.listRepo
@@ -363,13 +406,12 @@ export class RBACProvider {
 
     if (!list?.board?.id) return null;
 
-    this.setCache(cacheKey, list.board.id);
+    await rbacCache.setListBoardId(listId, list.board.id);
     return list.board.id;
   }
 
   async getBoardIdFromCard(cardId: string): Promise<string | null> {
-    const cacheKey = `card_board_${cardId}`;
-    const cached = this.getCached<string>(cacheKey);
+    const cached = await rbacCache.getCardBoardId(cardId);
     if (cached) return cached;
 
     const card = await this.cardRepo
@@ -381,7 +423,7 @@ export class RBACProvider {
 
     if (!card?.board?.id) return null;
 
-    this.setCache(cacheKey, card.board.id);
+    await rbacCache.setCardBoardId(cardId, card.board.id);
     return card.board.id;
   }
 
@@ -402,12 +444,27 @@ export class RBACProvider {
       return { allowed: false, reason: 'Workspace is archived' };
     }
 
-    // Public workspace - ai cũng xem được
     if (workspace.visibility === 'public') {
+      if (userId) {
+        const membership = await this.getWorkspaceMembership(
+          userId,
+          workspaceId
+        );
+        return {
+          allowed: true,
+          userContext: membership
+            ? {
+                userId,
+                workspaceRole: membership.role,
+                isWorkspaceMember: true,
+                isBoardMember: false,
+              }
+            : undefined,
+        };
+      }
       return { allowed: true };
     }
 
-    // Private workspace - phải là member
     if (!userId) {
       return { allowed: false, reason: 'Authentication required' };
     }
@@ -432,38 +489,55 @@ export class RBACProvider {
     userId: string | null,
     boardId: string
   ): Promise<AccessResult> {
-    const board = await this.boardRepo
-      .createQueryBuilder('board')
-      .leftJoin('board.workspace', 'workspace')
-      .where('board.id = :boardId', { boardId })
-      .select([
-        'board.id',
-        'board.visibility',
-        'board.isClosed',
-        'workspace.id',
-        'workspace.visibility',
-      ])
-      .getOne();
+    const board = await this.getBoardInfo(boardId);
 
     if (!board) {
       return { allowed: false, reason: 'Board not found' };
     }
 
+    let boardMembership: { role: Role; member: BoardMembers } | null = null;
+    let workspaceMembership: { role: Role; member: WorkspaceMembers } | null =
+      null;
+
+    if (userId) {
+      [boardMembership, workspaceMembership] = await Promise.all([
+        this.getBoardMembership(userId, boardId),
+        this.getWorkspaceMembership(userId, board.workspaceId),
+      ]);
+    }
+
     if (board.isClosed) {
-      // Board closed - chỉ board members mới xem được
       if (!userId) {
         return { allowed: false, reason: 'Board is closed' };
       }
-      const boardMembership = await this.getBoardMembership(userId, boardId);
-      if (!boardMembership) {
+
+      const adminRoles: Role[] = [
+        ROLES.WORKSPACE_ADMIN,
+        ROLES.WORKSPACE_MODERATOR,
+      ];
+      const isWorkspaceAdmin =
+        workspaceMembership && adminRoles.includes(workspaceMembership.role);
+
+      if (!boardMembership && !isWorkspaceAdmin) {
         return { allowed: false, reason: 'Board is closed' };
       }
     }
 
-    const visibility = board.visibility as BoardVisibility;
+    const visibility = board.visibility;
 
     if (visibility === 'public') {
-      return { allowed: true };
+      return {
+        allowed: true,
+        userContext: userId
+          ? {
+              userId,
+              workspaceRole: workspaceMembership?.role,
+              boardRole: boardMembership?.role,
+              isWorkspaceMember: !!workspaceMembership,
+              isBoardMember: !!boardMembership,
+            }
+          : undefined,
+      };
     }
 
     if (!userId) {
@@ -471,29 +545,21 @@ export class RBACProvider {
     }
 
     if (visibility === 'workspace') {
-      const workspaceMembership = await this.getWorkspaceMembership(
-        userId,
-        board.workspace.id
-      );
       if (workspaceMembership) {
         return {
           allowed: true,
           userContext: {
             userId,
             workspaceRole: workspaceMembership.role,
+            boardRole: boardMembership?.role,
             isWorkspaceMember: true,
-            isBoardMember: false,
+            isBoardMember: !!boardMembership,
           },
         };
       }
     }
 
-    const boardMembership = await this.getBoardMembership(userId, boardId);
     if (boardMembership) {
-      const workspaceMembership = await this.getWorkspaceMembership(
-        userId,
-        board.workspace.id
-      );
       return {
         allowed: true,
         userContext: {
@@ -504,6 +570,24 @@ export class RBACProvider {
           isBoardMember: true,
         },
       };
+    }
+
+    if (workspaceMembership) {
+      const adminRoles: Role[] = [
+        ROLES.WORKSPACE_ADMIN,
+        ROLES.WORKSPACE_MODERATOR,
+      ];
+      if (adminRoles.includes(workspaceMembership.role)) {
+        return {
+          allowed: true,
+          userContext: {
+            userId,
+            workspaceRole: workspaceMembership.role,
+            isWorkspaceMember: true,
+            isBoardMember: false,
+          },
+        };
+      }
     }
 
     return { allowed: false, reason: 'Not authorized to view this board' };
@@ -532,23 +616,20 @@ export class RBACProvider {
     boardId: string,
     permission: Permission
   ): Promise<boolean> {
-    const board = await this.boardRepo.findOne({
-      where: { id: boardId },
-      relations: ['workspace'],
-      select: ['id', 'visibility'],
-    });
-
+    // Use cached board info
+    const board = await this.getBoardInfo(boardId);
     if (!board) return false;
 
-    const boardMembership = await this.getBoardMembership(userId, boardId);
+    // Fetch both memberships in parallel
+    const [boardMembership, workspaceMembership] = await Promise.all([
+      this.getBoardMembership(userId, boardId),
+      this.getWorkspaceMembership(userId, board.workspaceId),
+    ]);
+
     const boardPermissions = boardMembership
       ? ROLE_PERMISSIONS[boardMembership.role] || []
       : [];
 
-    const workspaceMembership = await this.getWorkspaceMembership(
-      userId,
-      board.workspace.id
-    );
     const workspacePermissions = workspaceMembership
       ? ROLE_PERMISSIONS[workspaceMembership.role] || []
       : [];
@@ -570,17 +651,17 @@ export class RBACProvider {
     userId: string,
     boardId: string
   ): Promise<Role | null> {
-    const board = await this.boardRepo.findOne({
-      where: { id: boardId },
-      relations: ['workspace'],
-    });
-
+    // Use cached board info
+    const board = await this.getBoardInfo(boardId);
     if (!board) return null;
 
     const [boardMembership, workspaceMembership] = await Promise.all([
       this.getBoardMembership(userId, boardId),
-      this.getWorkspaceMembership(userId, board.workspace.id),
+      this.getWorkspaceMembership(userId, board.workspaceId),
     ]);
+
+    const workspaceRole = workspaceMembership?.role || null;
+    const boardRole = boardMembership?.role || null;
 
     if (workspaceMembership) {
       const adminRoles: Role[] = [
@@ -588,16 +669,16 @@ export class RBACProvider {
         ROLES.WORKSPACE_MODERATOR,
       ];
       if (adminRoles.includes(workspaceMembership.role)) {
-        return workspaceMembership.role;
+        return this.getHigherRole(workspaceRole, boardRole);
       }
     }
 
     if (boardMembership) {
-      return boardMembership.role;
+      return this.getHigherRole(boardRole, workspaceRole);
     }
 
     if (board.visibility === 'workspace' && workspaceMembership) {
-      return workspaceMembership.role;
+      return workspaceRole;
     }
 
     return null;
@@ -612,16 +693,32 @@ export class RBACProvider {
     return ROLE_PERMISSIONS[role] || [];
   }
 
-  clearCache(userId?: string, resourceId?: string): void {
+  static compareRoles(role1: Role, role2: Role): number {
+    return ROLE_HIERARCHY[role1] - ROLE_HIERARCHY[role2];
+  }
+
+  async clearCache(userId?: string, resourceId?: string): Promise<void> {
     if (userId && resourceId) {
-      this.cache.delete(`ws_member_${userId}_${resourceId}`);
-      this.cache.delete(`board_member_${userId}_${resourceId}`);
+      await Promise.all([
+        rbacCache.clearWorkspaceMembershipCache(userId, resourceId),
+        rbacCache.clearBoardMembershipCache(userId, resourceId),
+      ]);
+    } else if (userId) {
+      await rbacCache.clearUserCache(userId);
     } else {
-      this.cache.clear();
+      await rbacCache.clearAll();
     }
+  }
+
+  async clearBoardCache(boardId: string): Promise<void> {
+    await rbacCache.clearBoardCache(boardId);
+  }
+
+  async clearWorkspaceCache(workspaceId: string): Promise<void> {
+    await rbacCache.clearWorkspaceCache(workspaceId);
   }
 }
 
 export const rbacProvider = new RBACProvider();
 
-export { ROLE_PERMISSIONS };
+export { ROLE_PERMISSIONS, ROLE_HIERARCHY };

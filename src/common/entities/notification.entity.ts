@@ -1,29 +1,59 @@
-import { Column, Entity, ManyToOne, PrimaryGeneratedColumn } from 'typeorm';
-
-import { DateTimeEntity } from './base/dateTimeEntity';
+// notification.entity.ts
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  CreateDateColumn,
+  ManyToOne,
+  JoinColumn,
+  OneToOne,
+  Index,
+} from 'typeorm';
 import { User } from './user.entity';
+import { Action } from './action.entity';
+
+export enum NotificationType {
+  CARD_COMMENT = 'card_comment',
+  CARD_ATTACHMENT_ADDED = 'card_attachment_added',
+  CARD_DUE_SOON = 'card_due_soon',
+}
 
 @Entity('notifications')
-export class Notification extends DateTimeEntity {
+@Index('idx_notification_recipient', ['recipient'])
+@Index('idx_notification_is_read', ['isRead'])
+@Index('idx_notification_recipient_is_read', ['recipient', 'isRead'])
+@Index('idx_notification_created_at', ['createdAt'])
+@Index('idx_notification_action', ['action'])
+export class Notification {
   @PrimaryGeneratedColumn('uuid')
-  public id: string;
+  id: string;
 
-  @Column({ type: 'text' })
-  message: string;
+  @Column({ type: 'enum', enum: NotificationType })
+  type: NotificationType;
 
-  @Column({
-    type: 'enum',
-    enum: ['info', 'warning', 'error'],
-    default: 'info',
-  })
-  type: string;
-
-  @Column({ type: 'json', nullable: true })
-  data: any;
-
-  @Column({ name: 'isRead', type: 'boolean', default: false })
+  @Column({ default: false })
   isRead: boolean;
 
-  @ManyToOne(() => User, (user) => user.notifications)
-  user: User;
+  @Column({ type: 'jsonb', nullable: true })
+  data: any;
+
+  @CreateDateColumn()
+  createdAt: Date;
+
+  @Column({ type: 'uuid' })
+  recipientId: string;
+  @ManyToOne(() => User, (user) => user.notifications, {
+    onDelete: 'CASCADE',
+  })
+  @JoinColumn({ name: 'recipientId' })
+  recipient: User;
+
+  @Column({ type: 'uuid', nullable: true })
+  actionId: string;
+  @OneToOne(() => Action, {
+    nullable: true,
+    onDelete: 'SET NULL',
+  })
+  @JoinColumn({ name: 'actionId' })
+  action: Action;
 }

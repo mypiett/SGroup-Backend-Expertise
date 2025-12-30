@@ -3,7 +3,7 @@ import { List } from '../common/entities/list.entity';
 import { Card } from '../common/entities/card.entity';
 import { Board } from '../common/entities/board.entity';
 
-const TARGET_BOARD_ID = '04d7841f-8b10-4d02-aab5-fb05961463a6';
+const TARGET_BOARD_ID = '2be75b24-40f5-43d7-a26c-22382df37e17';
 
 const listsData = [
   {
@@ -13,32 +13,27 @@ const listsData = [
       {
         title: 'Setup project repository',
         description: 'Initialize Git repository and setup remote origin',
-        priority: 'high',
         position: 0,
       },
       {
         title: 'Design database schema',
         description: 'Create ERD diagram for all entities and relationships',
-        priority: 'high',
         position: 1,
       },
       {
         title: 'Write API documentation',
         description: 'Document all REST endpoints with Swagger/OpenAPI',
-        priority: 'medium',
         position: 2,
       },
       {
         title: 'Setup CI/CD pipeline',
         description:
           'Configure GitHub Actions for automated testing and deployment',
-        priority: 'medium',
         position: 3,
       },
       {
         title: 'Create unit tests',
         description: 'Write unit tests for core business logic',
-        priority: 'low',
         position: 4,
       },
     ],
@@ -50,39 +45,33 @@ const listsData = [
       {
         title: 'Implement user authentication',
         description: 'Build JWT-based auth system with refresh tokens',
-        priority: 'high',
         position: 0,
       },
       {
         title: 'Create board CRUD operations',
         description: 'Implement create, read, update, delete for boards',
-        priority: 'high',
         position: 1,
       },
       {
         title: 'Build list management features',
         description: 'Add archive, move, copy list functionality',
-        priority: 'medium',
         position: 2,
       },
       {
         title: 'Optimize database queries',
         description:
           'Add indexes and use bulk operations for better performance',
-        priority: 'high',
         position: 3,
       },
       {
         title: 'Implement RBAC system',
         description:
           'Role-based access control with workspace/board/card levels',
-        priority: 'high',
         position: 4,
       },
       {
         title: 'Setup Redis caching',
         description: 'Configure Redis for session management and query caching',
-        priority: 'medium',
         position: 5,
       },
     ],
@@ -95,25 +84,21 @@ const listsData = [
         title: 'Card drag and drop feature',
         description:
           'Frontend implementation for reordering cards within lists',
-        priority: 'medium',
         position: 0,
       },
       {
         title: 'Email notification system',
         description: 'Send emails for card assignments and due date reminders',
-        priority: 'low',
         position: 1,
       },
       {
         title: 'File attachment support',
         description: 'Allow users to upload and attach files to cards',
-        priority: 'medium',
         position: 2,
       },
       {
         title: 'Real-time updates with WebSocket',
         description: 'Implement Socket.io for live board synchronization',
-        priority: 'high',
         position: 3,
       },
     ],
@@ -125,49 +110,41 @@ const listsData = [
       {
         title: 'Project initialization',
         description: 'Setup Node.js, TypeScript, Express framework',
-        priority: 'high',
         position: 0,
       },
       {
         title: 'Database setup',
         description: 'Configure PostgreSQL and TypeORM migrations',
-        priority: 'high',
         position: 1,
       },
       {
         title: 'Basic workspace CRUD',
         description: 'Create, read, update, delete workspace functionality',
-        priority: 'high',
         position: 2,
       },
       {
         title: 'User registration and login',
         description: 'Basic auth endpoints with password hashing',
-        priority: 'high',
         position: 3,
       },
       {
         title: 'Workspace member management',
         description: 'Add/remove members, assign roles, send invitations',
-        priority: 'medium',
         position: 4,
       },
       {
         title: 'Board visibility settings',
         description: 'Implement public, private, and workspace visibility',
-        priority: 'medium',
         position: 5,
       },
       {
         title: 'Card comment system',
         description: 'Allow users to add comments and mentions on cards',
-        priority: 'low',
         position: 6,
       },
       {
         title: 'Search functionality',
         description: 'Search cards by title, description, and labels',
-        priority: 'low',
         position: 7,
       },
     ],
@@ -240,9 +217,9 @@ async function seedListsAndCards() {
         cardRepository.create({
           title: cardData.title,
           description: cardData.description,
-          priority: cardData.priority,
           position: cardData.position,
           list: savedList,
+          board: board,
           isArchived: false,
         })
       );

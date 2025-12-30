@@ -4,8 +4,6 @@ import * as dotenv from 'dotenv';
 import { Board } from '@/common/entities/board.entity';
 import { BoardMembers } from '@/common/entities/board-member.entity';
 import { Card } from '@/common/entities/card.entity';
-import { CardMembers } from '@/common/entities/card-members.entity';
-import { Comment } from '@/common/entities/comment.entity';
 import { List } from '@/common/entities/list.entity';
 import { Notification } from '@/common/entities/notification.entity';
 import { Permission } from '@/common/entities/permission.entity';
@@ -16,6 +14,12 @@ import { User } from '@/common/entities/user.entity';
 import { Workspace } from '@/common/entities/workspace.entity';
 import { WorkspaceMembers } from '@/common/entities/workspace-member.entity';
 import { BoardTemplate } from '@/common/entities/board-template.entity';
+import { CardCover } from '@/common/entities/card-cover.entity';
+import { Label } from '@/common/entities/label.entity';
+import { Attachment } from '@/common/entities/attachment.entity';
+import { Checklist } from '@/common/entities/checklist.entity';
+import { CheckItem } from '@/common/entities/checkItem.entity';
+import { Action } from '@/common/entities/action.entity';
 
 dotenv.config();
 
@@ -35,8 +39,6 @@ export const AppDataSource = new DataSource({
     Board,
     List,
     Card,
-    CardMembers,
-    Comment,
     Notification,
     RefreshToken,
     Role,
@@ -44,6 +46,12 @@ export const AppDataSource = new DataSource({
     Permission,
     BoardMembers,
     BoardTemplate,
+    CardCover,
+    Label,
+    Attachment,
+    Checklist,
+    CheckItem,
+    Action,
   ],
   migrations: ['src/migration/**/*.ts'],
   subscribers: [],
@@ -63,6 +71,6 @@ export const AppDataSource = new DataSource({
     duration: 30000,
     tableName: 'query_result_cache',
   },
-  maxQueryExecutionTime: 1000,
+  maxQueryExecutionTime: 3000,
   poolSize: 10,
 });
