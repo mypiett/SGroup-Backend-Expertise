@@ -21,6 +21,7 @@ import { Checklist } from '@/common/entities/checklist.entity';
 import { CheckItem } from '@/common/entities/checkItem.entity';
 import { Action } from '@/common/entities/action.entity';
 import { BoardActivity } from '@/common/entities/board-activity.entity';
+import { Comment } from '@/common/entities/comment.entity';
 
 dotenv.config();
 
@@ -54,6 +55,7 @@ export const AppDataSource = new DataSource({
     CheckItem,
     Action,
     BoardActivity,
+    Comment,
   ],
   migrations: ['src/migration/**/*.ts'],
   subscribers: [],
