@@ -9,6 +9,7 @@ import WorkspaceRouter from './workspaces/workspace.route';
 import ListRouter from './lists/list.route';
 import CardRouter from './cards/card.route';
 import ChecklistRouter from './checklists/checklist.route';
+import CheckItemRouter from './checkItems/checkItem.route';
 
 const route = Router();
 route.use('/users', UserRouter);
@@ -19,4 +20,5 @@ route.use('/roles', authenticateJWT, RoleRouter);
 route.use('/lists', authenticateJWT, ListRouter);
 route.use('/cards', authenticateJWT, CardRouter);
 route.use('/checklists', authenticateJWT, ChecklistRouter);
+route.use('/checkItems', authenticateJWT, CheckItemRouter);
 export default route;
