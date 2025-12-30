@@ -6,6 +6,7 @@ import {
 } from '@/common/models/serviceResponse';
 import { StatusCodes } from 'http-status-codes';
 import { uploadBoardCoverToCloudinary } from '@/config/cloudinary';
+import { boardActivityService, BoardActivityService } from './board-activity.service';
 
 const boardService = new BoardService();
 import { UserService } from '../users/user.service'; // chỉnh đường dẫn cho đúng
@@ -355,8 +356,15 @@ export class BoardController {
         workspaceMembersCanEditAndJoin,
       } = req.body;
 
-      const settings: any = {};
+      const settings: {
+        visibility?: 'private' | 'workspace' | 'public';
+        coverUrl?: string;
+        memberManagePolicy?: 'admins_only' | 'all_members';
+        commentPolicy?: 'disabled' | 'members' | 'workspace' | 'anyone';
+        workspaceMembersCanEditAndJoin?: boolean;
+      } = {};
 
+      // validate visibility
       if (visibility !== undefined) {
         const validVisibilities = ['private', 'workspace', 'public'];
         if (!validVisibilities.includes(visibility)) {
@@ -370,6 +378,7 @@ export class BoardController {
         settings.visibility = visibility;
       }
 
+      // validate coverUrl
       if (coverUrl !== undefined) {
         if (typeof coverUrl !== 'string' || !coverUrl.trim()) {
           return new ServiceResponse(
@@ -379,12 +388,13 @@ export class BoardController {
             StatusCodes.BAD_REQUEST
           );
         }
-        settings.coverUrl = coverUrl;
+        settings.coverUrl = coverUrl.trim();
       }
 
+      // validate memberManagePolicy
       if (memberManagePolicy !== undefined) {
-        const valid = ['admins_only', 'all_members'];
-        if (!valid.includes(memberManagePolicy)) {
+        const validMemberPolicies = ['admins_only', 'all_members'];
+        if (!validMemberPolicies.includes(memberManagePolicy)) {
           return new ServiceResponse(
             ResponseStatus.Failed,
             'Invalid memberManagePolicy value',
@@ -395,9 +405,10 @@ export class BoardController {
         settings.memberManagePolicy = memberManagePolicy;
       }
 
+      // validate commentPolicy
       if (commentPolicy !== undefined) {
-        const valid = ['disabled', 'members', 'workspace', 'anyone'];
-        if (!valid.includes(commentPolicy)) {
+        const validCommentPolicies = ['disabled', 'members', 'workspace', 'anyone'];
+        if (!validCommentPolicies.includes(commentPolicy)) {
           return new ServiceResponse(
             ResponseStatus.Failed,
             'Invalid commentPolicy value',
@@ -408,6 +419,7 @@ export class BoardController {
         settings.commentPolicy = commentPolicy;
       }
 
+      // validate workspaceMembersCanEditAndJoin
       if (workspaceMembersCanEditAndJoin !== undefined) {
         if (typeof workspaceMembersCanEditAndJoin !== 'boolean') {
           return new ServiceResponse(
@@ -417,8 +429,7 @@ export class BoardController {
             StatusCodes.BAD_REQUEST
           );
         }
-        settings.workspaceMembersCanEditAndJoin =
-          workspaceMembersCanEditAndJoin;
+        settings.workspaceMembersCanEditAndJoin = workspaceMembersCanEditAndJoin;
       }
 
       if (Object.keys(settings).length === 0) {
@@ -430,7 +441,7 @@ export class BoardController {
         );
       }
 
-      const userId = req.user?.userId;
+      const userId = req.user?.userId as string;
       const isAdmin = await boardService.checkBoardAdmin(id, userId);
       if (!isAdmin) {
         return new ServiceResponse(
@@ -441,23 +452,34 @@ export class BoardController {
         );
       }
 
-      const { board, changedFields } = await boardService.updateBoardSettings(
-        id,
-        settings
-      );
+      const { board, changedFields } = await boardService.updateBoardSettings(id, settings);
 
-      if (changedFields.length === 0) {
+      // Không có field nào thay đổi
+      if (!changedFields || Object.keys(changedFields).length === 0) {
         return new ServiceResponse(
           ResponseStatus.Success,
-          'No board settings were changed',
-          { board, changedFields },
+          'No settings changed',
+          {
+            board,
+            changedFields: {},
+          },
           StatusCodes.OK
         );
       }
 
+      // 🎯 log activity (TS-10 – làm luôn ở đây luôn cho gọn)
+      await boardActivityService.logActivity({
+        boardId: id,
+        actorId: userId,
+        actionType: 'BOARD_SETTINGS_UPDATED',
+        targetType: 'BOARD',
+        targetId: id,
+        metadata: { changedFields },
+      });
+
       return new ServiceResponse(
         ResponseStatus.Success,
-        `Board settings updated: ${changedFields.join(', ')}`,
+        'Board settings updated successfully',
         { board, changedFields },
         StatusCodes.OK
       );
@@ -474,7 +496,7 @@ export class BoardController {
   static async updateCover(req: Request): Promise<ServiceResponse<any>> {
     try {
       const { id } = req.params;
-      const userId = req.user?.userId;
+      const userId = req.user?.userId as string;
 
       const isAdmin = await boardService.checkBoardAdmin(id, userId);
       if (!isAdmin) {
@@ -486,7 +508,7 @@ export class BoardController {
         );
       }
 
-      const file = req.file;
+      const file = req.file as Express.Multer.File | undefined;
       if (!file) {
         return new ServiceResponse(
           ResponseStatus.Failed,
@@ -498,10 +520,18 @@ export class BoardController {
 
       const coverUrl = await uploadBoardCoverToCloudinary(file);
 
-      const { board, changedFields } = await boardService.updateBoardSettings(
-        id,
-        { coverUrl }
-      );
+      const { board, changedFields } = await boardService.updateBoardSettings(id, {
+        coverUrl,
+      });
+
+      await boardActivityService.logActivity({
+        boardId: id,
+        actorId: userId,
+        actionType: 'BOARD_SETTINGS_UPDATED',
+        targetType: 'BOARD',
+        targetId: id,
+        metadata: { changedFields },
+      });
 
       return new ServiceResponse(
         ResponseStatus.Success,
@@ -518,6 +548,7 @@ export class BoardController {
       );
     }
   }
+
 
   static async getMembers(req: Request): Promise<ServiceResponse<any>> {
     //Hàm ni dùng để lấy ds thành viên trong board
@@ -605,4 +636,99 @@ export class BoardController {
       );
     }
   }
+
+  static async searchCards(req: Request): Promise<ServiceResponse<any>> {
+    try {
+      const boardId =
+        (req.params as any).id ||
+        (req.params as any).boardId ||
+        (req.query.boardId as string | undefined);
+
+      if (!boardId) {
+        return new ServiceResponse(
+          ResponseStatus.Failed,
+          'boardId is required',
+          null,
+          StatusCodes.BAD_REQUEST
+        );
+      }
+
+      const { keyword, q, labelIds, memberId, status, dueFrom, dueTo } =
+        req.query as any;
+
+      const searchKeyword: string | undefined = keyword || q;
+
+      const parsedLabelIds: string[] | undefined =
+        typeof labelIds === 'string'
+          ? labelIds
+            .split(',')
+            .map((id: string) => id.trim())
+            .filter(Boolean)
+          : Array.isArray(labelIds)
+            ? (labelIds as string[])
+            : undefined;
+
+      const cards = await boardService.searchCardsInBoard(boardId, {
+        keyword: searchKeyword,
+        labelIds: parsedLabelIds,
+        memberId,
+        status,
+        dueFrom,
+        dueTo,
+      });
+
+      return new ServiceResponse(
+        ResponseStatus.Success,
+        'Cards fetched successfully',
+        cards,
+        StatusCodes.OK
+      );
+    } catch (error: any) {
+      return new ServiceResponse(
+        ResponseStatus.Failed,
+        error.message || 'Error searching cards',
+        null,
+        StatusCodes.BAD_REQUEST
+      );
+    }
+  }
+
+
+
+  static async getActivity(req: Request): Promise<ServiceResponse<any>> {
+    try {
+      const boardId = (req.params.id ||
+        req.params.boardId ||
+        (req.query.boardId as string | undefined)) as string | undefined;
+
+      if (!boardId) {
+        return new ServiceResponse(
+          ResponseStatus.Failed,
+          'boardId is required',
+          null,
+          StatusCodes.BAD_REQUEST
+        );
+      }
+
+      const page = req.query.page ? parseInt(req.query.page as string, 10) : 1;
+      const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : 20;
+
+      const result = await boardActivityService.getBoardActivity(boardId, page, limit);
+
+      return new ServiceResponse(
+        ResponseStatus.Success,
+        'Board activity retrieved successfully',
+        result,
+        StatusCodes.OK
+      );
+    } catch (error: any) {
+      return new ServiceResponse(
+        ResponseStatus.Failed,
+        error.message || 'Error while fetching board activity',
+        null,
+        StatusCodes.BAD_REQUEST
+      );
+    }
+  }
+
 }

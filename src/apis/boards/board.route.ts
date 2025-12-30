@@ -1012,3 +1012,117 @@ route.delete('/:id/members/:userId', authenticateJWT, async (req, res) => {
   const serviceResponse = await BoardController.removeMemberFromBoard(req);
   return handleServiceResponse(serviceResponse, res);
 });
+
+/**
+ * @swagger
+ * /boards/{id}/cards/search:
+ *   get:
+ *     tags:
+ *       - Boards
+ *     summary: Search and filter cards in a board
+ *     description: Search cards within a board by keyword, label, assignee, status, due date.
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         description: Board ID
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: keyword
+ *         required: false
+ *         schema:
+ *           type: string
+ *         description: Search keyword in card title/description
+ *       - in: query
+ *         name: labelIds
+ *         required: false
+ *         schema:
+ *           type: string
+ *         description: Comma-separated label ids (id1,id2,id3)
+ *       - in: query
+ *         name: memberId
+ *         required: false
+ *         schema:
+ *           type: string
+ *         description: Assignee user id
+ *       - in: query
+ *         name: status
+ *         required: false
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: dueFrom
+ *         required: false
+ *         schema:
+ *           type: string
+ *           format: date-time
+ *       - in: query
+ *         name: dueTo
+ *         required: false
+ *         schema:
+ *           type: string
+ *           format: date-time
+ *     responses:
+ *       200:
+ *         description: List of cards
+ *       403:
+ *         description: Forbidden
+ */
+route.get(
+  '/:id/cards/search',
+  authenticateJWT,
+  checkBoardAccess(),
+  requireBoardPermissions(PERMISSIONS.CARDS_READ),
+  async (req, res) => {
+    const serviceResponse = await BoardController.searchCards(req);
+    return handleServiceResponse(serviceResponse, res);
+  }
+);
+
+
+
+/**
+ * @swagger
+ * /boards/{id}/activity:
+ *   get:
+ *     tags:
+ *       - Boards
+ *     summary: Get board activity log
+ *     description: Return paginated activity timeline of a board.
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: boardId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Board ID
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 20
+ *     responses:
+ *       200:
+ *         description: Activity list
+ *       403:
+ *         description: Forbidden
+ */
+route.get(
+  '/:boardId/activity',
+  authenticateJWT,
+  checkBoardAccess(),
+  async (req, res) => {
+    const serviceResponse = await BoardController.getActivity(req);
+    return handleServiceResponse(serviceResponse, res);
+  }
+);

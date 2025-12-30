@@ -9,6 +9,7 @@ import WorkspaceRouter from './workspaces/workspace.route';
 import ListRouter from './lists/list.route';
 import CardRouter from './cards/card.route';
 import NotificationRouter from './notification/notification.route';
+import commentRoute from '@/apis/comments/comment.route';
 
 const route = Router();
 route.use('/users', UserRouter);
@@ -19,4 +20,5 @@ route.use('/roles', authenticateJWT, RoleRouter);
 route.use('/lists', authenticateJWT, ListRouter);
 route.use('/cards', authenticateJWT, CardRouter);
 route.use('/notifications', authenticateJWT, NotificationRouter);
+route.use('/comments', authenticateJWT, commentRoute);
 export default route;
