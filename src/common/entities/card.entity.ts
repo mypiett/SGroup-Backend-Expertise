@@ -19,6 +19,8 @@ import { Label } from './label.entity';
 import { Attachment } from './attachment.entity';
 import { Checklist } from './checklist.entity';
 import { Action } from './action.entity';
+import { Comment } from './comment.entity'; 
+
 
 @Entity('cards')
 @Index('idx_card_list_id', ['list'])
@@ -105,4 +107,8 @@ export class Card extends DateTimeEntity {
 
   @OneToMany(() => Action, (action) => action.card)
   public actions: Action[];
+
+  @OneToMany(() => Comment, (comment) => comment.card)
+  public comments: Comment[];
+
 }

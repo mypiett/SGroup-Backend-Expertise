@@ -639,36 +639,37 @@ export class BoardController {
 
   static async searchCards(req: Request): Promise<ServiceResponse<any>> {
     try {
-      const boardId = req.params.id;
+      const boardId =
+        (req.params as any).id ||
+        (req.params as any).boardId ||
+        (req.query.boardId as string | undefined);
 
-      const {
-        keyword,
-        labelIds,
-        memberId,
-        status,
-        dueFrom,
-        dueTo,
-      } = req.query as {
-        keyword?: string;
-        labelIds?: string | string[];
-        memberId?: string;
-        status?: string;
-        dueFrom?: string;
-        dueTo?: string;
-      };
+      if (!boardId) {
+        return new ServiceResponse(
+          ResponseStatus.Failed,
+          'boardId is required',
+          null,
+          StatusCodes.BAD_REQUEST
+        );
+      }
+
+      const { keyword, q, labelIds, memberId, status, dueFrom, dueTo } =
+        req.query as any;
+
+      const searchKeyword: string | undefined = keyword || q;
 
       const parsedLabelIds: string[] | undefined =
         typeof labelIds === 'string'
           ? labelIds
             .split(',')
-            .map((id) => id.trim())
+            .map((id: string) => id.trim())
             .filter(Boolean)
           : Array.isArray(labelIds)
             ? (labelIds as string[])
             : undefined;
 
       const cards = await boardService.searchCardsInBoard(boardId, {
-        keyword,
+        keyword: searchKeyword,
         labelIds: parsedLabelIds,
         memberId,
         status,
@@ -691,6 +692,8 @@ export class BoardController {
       );
     }
   }
+
+
 
   static async getActivity(req: Request): Promise<ServiceResponse<any>> {
     try {

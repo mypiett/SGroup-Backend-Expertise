@@ -11,6 +11,14 @@ interface AuthorizationOptions {
   allowPublic?: boolean;
   errorMessage?: string;
 }
+const getBoardIdFromRequest = (req: Request): string | undefined => {
+  return (
+    (req.params as any).boardId ||      // /boards/:boardId/...
+    (req.params as any).id ||           // /boards/:id/... (các route cũ)
+    (req.query.boardId as string | undefined) ||
+    (req.body.boardId as string | undefined)
+  );
+};
 
 function getResourceId(
   req: Request,
@@ -136,7 +144,7 @@ export function checkWorkspaceAccess(
 }
 
 export function checkBoardAccess(
-  idField: string = 'boardId',
+  idField: string = 'id',
   idSource: 'params' | 'body' | 'query' = 'params',
   allowPublic: boolean = false
 ) {
@@ -446,6 +454,15 @@ export function requireBoardPermissions(
   const permissionArray = Array.isArray(permissions)
     ? permissions
     : [permissions];
+  
+  const getBoardIdFromRequest = (req: Request): string | undefined => {
+    return (
+      (req.params as any).boardId ||      // /boards/:boardId/...
+      (req.params as any).id ||           // /boards/:id/... (các route cũ)
+      (req.query.boardId as string | undefined) ||
+      (req.body.boardId as string | undefined)
+    );
+  };
 
   return async (req: Request, res: Response, next: NextFunction) => {
     try {
