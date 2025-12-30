@@ -18,6 +18,11 @@ import { ROLES } from '@/common/constants';
 import authenticateJWT from '@/common/middleware/authentication';
 import { ListController } from '../lists/list.controller';
 import { CreateListSchema } from '../lists/list.schema';
+import {
+  CreateLabelSchema,
+  GetLabelsByBoardSchema,
+} from '../labels/label.schema';
+import { LabelController } from '../labels/label.controller';
 const route = Router();
 
 /**
@@ -1082,8 +1087,6 @@ route.get(
   }
 );
 
-
-
 /**
  * @swagger
  * /boards/{id}/activity:
@@ -1124,5 +1127,77 @@ route.get(
   async (req, res) => {
     const serviceResponse = await BoardController.getActivity(req);
     return handleServiceResponse(serviceResponse, res);
+  }
+);
+
+/**
+ * /boards/{boardId}/labels:
+ *   get:
+ *     tags:
+ *       - Label
+ *     summary: Get labels by board
+ *     description: Retrieve all labels of a board
+ *           format: uuid
+ *         description: Board ID
+ *     responses:
+ *       200:
+ *         description: Successfully retrieved labels
+ *       401:
+ *         description: Unauthorized
+ */
+route.get(
+  '/:boardId/labels',
+  validateRequest(GetLabelsByBoardSchema),
+  async (req, res) => {
+    const response = await LabelController.getLabelsByBoard(req);
+    return handleServiceResponse(response, res);
+  }
+);
+
+/**
+ * @swagger
+ * /boards/{boardId}/labels:
+ *   post:
+ *     tags:
+ *       - Label
+ *     summary: Create label
+ *     description: Create a new label in a board
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: boardId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - name
+ *               - color
+ *             properties:
+ *               name:
+ *                 type: string
+ *                 example: Bug
+ *               color:
+ *                 type: string
+ *                 example: red
+ *     responses:
+ *       201:
+ *         description: Label created successfully
+ *       401:
+ *         description: Unauthorized
+ */
+route.post(
+  '/:boardId/labels',
+  validateRequest(CreateLabelSchema),
+  async (req, res) => {
+    const response = await LabelController.createLabel(req);
+    return handleServiceResponse(response, res);
   }
 );
