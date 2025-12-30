@@ -10,6 +10,7 @@ import { EmailService } from '../mail/mail.service';
 import { rbacProvider } from '@/common/utils/rbac';
 import crypto from 'crypto';
 import { AddBoardMemberInput } from './board.schema';
+import { Card } from '@/common/entities/card.entity';
 
 export class BoardService {
   private boardRepository = AppDataSource.getRepository(Board);
@@ -18,6 +19,7 @@ export class BoardService {
   private userRepository = AppDataSource.getRepository(User);
   private roleRepository = AppDataSource.getRepository(Role);
   private emailService = new EmailService();
+  private cardRepository = AppDataSource.getRepository(Card);
 
   async createBoard(data: CreateBoardDto, creatorId?: string) {
     const workspace = await this.workspaceRepository.findOne({
@@ -415,53 +417,61 @@ export class BoardService {
       commentPolicy?: 'disabled' | 'members' | 'workspace' | 'anyone';
       workspaceMembersCanEditAndJoin?: boolean;
     }
-  ): Promise<{ board: Board; changedFields: string[] }> {
+  ) {
     const board = await this.boardRepository.findOne({ where: { id: boardId } });
     if (!board) throw new Error('Board not found');
 
-    const changedFields: string[] = [];
+    const changedFields: Record<string, { old: any; new: any }> = {};
 
     if (settings.visibility !== undefined && settings.visibility !== board.visibility) {
+      changedFields.visibility = { old: board.visibility, new: settings.visibility };
       board.visibility = settings.visibility;
-      changedFields.push('visibility');
     }
 
     if (settings.coverUrl !== undefined && settings.coverUrl !== board.coverUrl) {
+      changedFields.coverUrl = { old: board.coverUrl, new: settings.coverUrl };
       board.coverUrl = settings.coverUrl;
-      changedFields.push('coverUrl');
     }
 
     if (
       settings.memberManagePolicy !== undefined &&
       settings.memberManagePolicy !== board.memberManagePolicy
     ) {
+      changedFields.memberManagePolicy = {
+        old: board.memberManagePolicy,
+        new: settings.memberManagePolicy,
+      };
       board.memberManagePolicy = settings.memberManagePolicy;
-      changedFields.push('memberManagePolicy');
     }
 
-    if (
-      settings.commentPolicy !== undefined &&
-      settings.commentPolicy !== board.commentPolicy
-    ) {
+    if (settings.commentPolicy !== undefined && settings.commentPolicy !== board.commentPolicy) {
+      changedFields.commentPolicy = {
+        old: board.commentPolicy,
+        new: settings.commentPolicy,
+      };
       board.commentPolicy = settings.commentPolicy;
-      changedFields.push('commentPolicy');
     }
 
     if (
       settings.workspaceMembersCanEditAndJoin !== undefined &&
       settings.workspaceMembersCanEditAndJoin !== board.workspaceMembersCanEditAndJoin
     ) {
+      changedFields.workspaceMembersCanEditAndJoin = {
+        old: board.workspaceMembersCanEditAndJoin,
+        new: settings.workspaceMembersCanEditAndJoin,
+      };
       board.workspaceMembersCanEditAndJoin = settings.workspaceMembersCanEditAndJoin;
-      changedFields.push('workspaceMembersCanEditAndJoin');
     }
 
-    if (changedFields.length === 0) {
+    // Không có gì thay đổi → trả luôn board hiện tại
+    if (Object.keys(changedFields).length === 0) {
       return { board, changedFields };
     }
 
     const saved = await this.boardRepository.save(board);
     return { board: saved, changedFields };
   }
+
 
 
   async closeBoard(id: string) {
@@ -571,4 +581,86 @@ export class BoardService {
       message: 'Member removed successfully',
     };
   }
+
+  async searchCardsInBoard(
+    boardId: string,
+    filters: {
+      keyword?: string;
+      labelIds?: string[];
+      memberId?: string;
+      status?: string;
+      dueFrom?: string;
+      dueTo?: string;
+    }
+  ) {
+    const qb = this.cardRepository
+      .createQueryBuilder('card')
+      .innerJoin('card.list', 'list')
+      .innerJoin('list.board', 'board')
+      .where('board.id = :boardId', { boardId })
+      .andWhere('card.isArchived = false');
+
+    if (filters.keyword) {
+      const kw = `%${filters.keyword.toLowerCase()}%`;
+      qb.andWhere(
+        '(LOWER(card.title) LIKE :kw OR LOWER(card.description) LIKE :kw)',
+        { kw }
+      );
+    }
+
+    if (filters.status) {
+      qb.andWhere('card.status = :status', { status: filters.status });
+    }
+
+    if (filters.dueFrom) {
+      qb.andWhere('card.dueDate >= :dueFrom', { dueFrom: filters.dueFrom });
+    }
+
+    if (filters.dueTo) {
+      qb.andWhere('card.dueDate <= :dueTo', { dueTo: filters.dueTo });
+    }
+
+    // labels
+    if (filters.labelIds && filters.labelIds.length > 0) {
+      qb.innerJoin('card.labels', 'label').andWhere(
+        'label.id IN (:...labelIds)',
+        { labelIds: filters.labelIds }
+      );
+    } else {
+      qb.leftJoinAndSelect('card.labels', 'label');
+    }
+
+    // assignees
+    if (filters.memberId) {
+      qb.innerJoin('card.members', 'member').andWhere(
+        'member.id = :memberId',
+        { memberId: filters.memberId }
+      );
+    } else {
+      qb.leftJoinAndSelect('card.members', 'member');
+    }
+
+    qb.leftJoinAndSelect('card.list', 'listSelect');
+
+    const cards = await qb
+      .select([
+        'card.id',
+        'card.title',
+        'card.description',
+        'card.status',
+        'card.dueDate',
+        'listSelect.id',
+        'listSelect.title',
+        'label.id',
+        'label.name',
+        'label.color',
+        'member.id',
+        'member.name',
+        'member.email',
+      ])
+      .getMany();
+
+    return cards;
+  }
+
 }

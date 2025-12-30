@@ -3,8 +3,7 @@ import { List } from '../common/entities/list.entity';
 import { Card } from '../common/entities/card.entity';
 import { Board } from '../common/entities/board.entity';
 
-const TARGET_BOARD_ID = '2be75b24-40f5-43d7-a26c-22382df37e17';
-
+const TARGET_BOARD_ID = 'b2a6b4ea-74db-45e5-91c2-55b23a9b13c3'; // Thay đổi ID này theo board muốn seed dữ liệu vào
 const listsData = [
   {
     title: 'To Do',
@@ -219,7 +218,7 @@ async function seedListsAndCards() {
           description: cardData.description,
           position: cardData.position,
           list: savedList,
-          board: board,
+          board: board, // thêm board relation
           isArchived: false,
         })
       );
