@@ -14,6 +14,7 @@ import { BoardMembers } from './board-member.entity';
 import { List } from './list.entity';
 import { Workspace } from './workspace.entity';
 import { Label } from './label.entity';
+import { BoardActivity } from './board-activity.entity';
 
 @Entity('boards')
 // ✅ PERFORMANCE INDEXES
@@ -89,4 +90,7 @@ export class Board extends DateTimeEntity {
   // labels
   @OneToMany(() => Label, (label) => label.board)
   public labels: Label[];
+  @OneToMany(() => BoardActivity, (activity) => activity.board)
+  public activities: BoardActivity[];
+
 }
