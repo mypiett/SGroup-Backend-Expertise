@@ -10,6 +10,7 @@ import ListRouter from './lists/list.route';
 import CardRouter from './cards/card.route';
 import NotificationRouter from './notification/notification.route';
 import commentRoute from '@/apis/comments/comment.route';
+import LabelRouter from './labels/label.route';
 
 const route = Router();
 route.use('/users', UserRouter);
@@ -21,4 +22,5 @@ route.use('/lists', authenticateJWT, ListRouter);
 route.use('/cards', authenticateJWT, CardRouter);
 route.use('/notifications', authenticateJWT, NotificationRouter);
 route.use('/comments', authenticateJWT, commentRoute);
+route.use('/labels', authenticateJWT, LabelRouter);
 export default route;
